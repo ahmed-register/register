@@ -36,6 +36,7 @@ table{border-collapse:collapse;min-width:100%}th,td{border:1px solid var(--bd);p
 th{background:linear-gradient(120deg,#6c4bff,#00b3ff);color:#fff}td.nm{text-align:right;min-width:130px;background:var(--card)}
 .lvsel{border:0;border-radius:10px;padding:10px 6px;font:inherit;min-width:92px;text-align:center;background:var(--card);color:var(--mu)}
 .l1{background:#f5b7b7;color:#1c2233}.l2{background:#f7d9c4;color:#1c2233}.l3{background:#fbf0b0;color:#1c2233}.l4{background:#c3ebc9;color:#1c2233}.l5{background:#b5dff0;color:#1c2233}.l6{background:#c9b8f5;color:#1c2233}
+.stat{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:14px;text-align:center}.stat b{display:block;font-size:30px;color:var(--ac)}.stat span{font-size:13px;color:var(--mu)}
 </style>
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#6c4bff"><link rel="apple-touch-icon" href="icon-192.png">
 </head>
@@ -57,7 +58,7 @@ const SUBJ=['القراءة','القواعد','المحفوظات','التعبي
 const ALL=[...SUBJ,'الرياضيات','العلوم','التربية الإسلامية','الاجتماعيات','التربية الفنية','التربية الرياضية','الإنكليزية'];
 const MON=['تشرين الأول','تشرين الثاني','كانون الأول','كانون الثاني','شباط','آذار','نيسان','أيار'];
 const DAYS=['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
-let gs=SUBJ[0],gm=MON[0],rsAll=false;
+let gs=SUBJ[0],gm=MON[0],rsAll=false,evSort='alpha';
 function ensure(){S.gr=S.gr||{};S.tt=S.tt||{};S.lp=S.lp||{};S.ev=S.ev||{};S.evs=S.evs||{}}
 const LV=['ضعيف','مقبول','متوسط','جيد','جيد جدا','ممتاز'];
 let view='home',date=today(),adding=null,sync='⏳',ref=null,lastJson='',timer=null;
@@ -125,19 +126,13 @@ function render(){
     <div class="note">حاضر ${s.students.length-Object.keys(a).length} · غائب ${Object.keys(a).length}</div>
     ${s.students.map(t=>{const ab=!!a[t.id];return `<div class="item"><b>${esc(t.name)}</b><button class="st ${ab?'a':'p'}" data-t="${t.id}">${ab?'غائب':'حاضر'}</button></div>`}).join('')||'<p class="note">لا يوجد تلاميذ — أضفهم من «سجل التلاميذ».</p>'}`;
   }else if(view==='stu'){
-    h=`${back}<div class="hd">سجل التلاميذ</div>${pick}
+    h=`${back}<div class="hd">سجل التلاميذ</div>${secChips(c,s)}
     <div class="row"><input class="in" id="nm" placeholder="اسم تلميذ جديد"><button class="btn" id="mic">🎤</button><button class="btn pri" id="add">إضافة</button></div>
     <textarea id="bulk" rows="3" placeholder="أو الصق عدة أسماء، كل اسم في سطر"></textarea>
     <div class="row"><button class="btn" id="addb">إضافة الأسماء</button></div>
-    ${[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar')).map((t,i)=>`<div class="item"><span>${i+1}. ${esc(t.name)}</span><button class="x" data-d="${t.id}">✕</button></div>`).join('')}`;
+    ${evBlock(c,s)}`;
   }else if(view==='ev'){
-    const subs=(S.evs[c.id]=S.evs[c.id]||[]);
-    h=`${back}<div class="hd">⭐ التقييمات</div>${pick}
-    <div class="row"><input class="in" id="sn" placeholder="اسم المادة (مثل: قراءة، إملاء)"><button class="btn pri" id="sa">＋ مادة</button></div>
-    <input id="sq" placeholder="🔍 بحث عن تلميذ">
-    <div class="tbl"><table><tr><th>م</th><th>التلميذ</th>${subs.map(b=>`<th>${esc(b.name)} <button class="x" data-ds="${b.id}" style="width:26px;height:26px">✕</button></th>`).join('')}</tr>
-    ${[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar')).map((t,i)=>`<tr data-n="${esc(t.name)}"><td>${i+1}</td><td class="nm">${esc(t.name)}</td>${subs.map(b=>{const v=((S.ev[t.id]||{})[b.id])||'';return `<td><select class="lvsel l${LV.indexOf(v)+1}" data-e="${t.id}|${b.id}"><option value="">—</option>${LV.map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join('')}</select></td>`}).join('')}</tr>`).join('')}</table></div>
-    ${subs.length?'':'<p class="note">أضف مادة أولًا لتظهر أعمدة التقييم.</p>'}`;
+    h=`${back}<div class="hd">⭐ التقييمات</div>${pick}${evBlock(c,s)}`;
   }else if(view==='gr'){
     const vals=t=>Object.values((S.gr[s.id]||{})[gs]||{}).map(x=>x[t.id]).filter(v=>v!==undefined&&v!=='');
     h=`${back}<div class="hd">📝 الدرجات</div>${pick}
@@ -171,7 +166,7 @@ function render(){
   }
   A.innerHTML=h;
   $('#back').onclick=()=>go('home');
-  const pc=$('#pc');if(pc){pc.onchange=()=>{S.cur.c=pc.value;S.cur.s=cls().sections[0].id;save();render()};$('#ps').onchange=e=>{S.cur.s=e.target.value;save();render()}}
+  const pc=$('#pc');if(pc){pc.onchange=()=>{S.cur.c=pc.value;S.cur.s=cls().sections[0].id;save();render()};if($('#ps'))$('#ps').onchange=e=>{S.cur.s=e.target.value;save();render()}}
   if($('#dt'))$('#dt').onchange=e=>{date=e.target.value||today();render()};
   A.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{const k=date+'|'+s.id;S.att[k]=S.att[k]||{};const id=b.dataset.t;if(S.att[k][id])delete S.att[k][id];else S.att[k][id]=1;save();render()});
   A.querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{if(confirm('حذف التلميذ؟')){s.students=s.students.filter(t=>t.id!==b.dataset.d);save();render()}});
@@ -191,16 +186,40 @@ function render(){
 }
 function bind2(s){
   const A=$('#app'),cid=cls().id;
+  A.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{S.cur.s=b.dataset.sc;save();render()});
+  if($('#an'))$('#an').onclick=()=>{S.autoNext=(S.autoNext===false);save();render()};
+  if($('#so'))$('#so').onclick=()=>{evSort=evSort==='alpha'?'top':'alpha';render()};
+  if($('#sqm'))$('#sqm').onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){alert('الميكروفون غير مدعوم هنا');return}const r=new R();r.lang='ar-SA';r.onresult=e=>{const i=$('#sq');i.value=e.results[0][0].transcript;i.dispatchEvent(new Event('input'))};r.onerror=()=>alert('تعذر استخدام الميكروفون');try{r.start()}catch(e){}};
   if($('#r1')){$('#r1').onclick=()=>{rsAll=false;render()};$('#r2').onclick=()=>{rsAll=true;render()}}
   if($('#sa'))$('#sa').onclick=()=>{const n=$('#sn').value.trim();if(!n)return;S.evs[cid]=S.evs[cid]||[];S.evs[cid].push({id:'b'+uid(),name:n});save();render()};
   A.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{if(confirm('حذف هذه المادة من التقييمات؟')){S.evs[cid]=S.evs[cid].filter(x=>x.id!==b.dataset.ds);save();render()}});
-  A.querySelectorAll('[data-e]').forEach(x=>x.onchange=()=>{const [sid,bid]=x.dataset.e.split('|');S.ev[sid]=S.ev[sid]||{};if(x.value==='')delete S.ev[sid][bid];else S.ev[sid][bid]=x.value;x.className='lvsel l'+(LV.indexOf(x.value)+1);save()});
+  A.querySelectorAll('[data-e]').forEach(x=>x.onchange=()=>{const [sid,bid]=x.dataset.e.split('|');S.ev[sid]=S.ev[sid]||{};if(x.value==='')delete S.ev[sid][bid];else S.ev[sid][bid]=x.value;x.className='lvsel l'+(LV.indexOf(x.value)+1);save();if(x.value&&S.autoNext!==false){let r=x.closest('tr').nextElementSibling;while(r&&r.style.display==='none')r=r.nextElementSibling;const n=r&&r.querySelector('select[data-e$="|'+bid+'"]');if(n){n.scrollIntoView({block:'center'});n.focus();setTimeout(()=>{try{n.showPicker()}catch(e){}},150)}}});
   if($('#sq'))$('#sq').oninput=e=>{const q=e.target.value.trim();A.querySelectorAll('tr[data-n]').forEach(r=>r.style.display=r.dataset.n.includes(q)?'':'none')};
   if($('#gs')){$('#gs').onchange=e=>{gs=e.target.value;render()};$('#gm').onchange=e=>{gm=e.target.value;render()}}
   A.querySelectorAll('[data-g]').forEach(i=>i.onchange=()=>{S.gr[s.id]=S.gr[s.id]||{};S.gr[s.id][gs]=S.gr[s.id][gs]||{};S.gr[s.id][gs][gm]=S.gr[s.id][gs][gm]||{};const o=S.gr[s.id][gs][gm];if(i.value==='')delete o[i.dataset.g];else o[i.dataset.g]=i.value;save();render()});
   A.querySelectorAll('[data-tt]').forEach(x=>x.onchange=()=>{const [d,k]=x.dataset.tt.split('|');S.tt[s.id]=S.tt[s.id]||{};const t=S.tt[s.id];t[d]=t[d]||['','','','','',''];t[d][k]=x.value;save()});
   if($('#lpa'))$('#lpa').onclick=()=>{const t=$('#lpt').value.trim();if(!t)return;S.lp[s.id]=S.lp[s.id]||[];S.lp[s.id].unshift({id:uid(),d:$('#lpd').value,s:$('#lps').value,t,n:$('#lpn').value.trim()});save();render()};
   A.querySelectorAll('[data-lp]').forEach(b=>b.onclick=()=>{if(confirm('حذف السجل؟')){S.lp[s.id]=S.lp[s.id].filter(x=>x.id!==b.dataset.lp);save();render()}});
+}
+function secChips(c,s){
+  return `<div class="row">${S.classes.length>1?`<select id="pc" style="width:auto">${S.classes.map(x=>`<option value="${x.id}" ${x.id===c.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`:''}${c.sections.map(x=>`<button class="chip ${x.id===s.id?'on':''}" data-sc="${x.id}" style="flex:1">${esc(x.name)}</button>`).join('')}</div>`;
+}
+function evBlock(c,s){
+  const subs=(S.evs[c.id]=S.evs[c.id]||[]);
+  const ks=t=>subs.map(b=>LV.indexOf(((S.ev[t.id]||{})[b.id])||'')+1).filter(k=>k>0);
+  const avgOf=t=>{const v=ks(t);return v.length?v.reduce((x,y)=>x+y,0)/v.length:0};
+  const al=(x,y)=>x.name.localeCompare(y.name,'ar');
+  const list=[...s.students].sort(evSort==='top'?(x,y)=>avgOf(y)-avgOf(x)||al(x,y):al);
+  const mx=Math.max(0,...list.map(avgOf));
+  const all=s.students.flatMap(ks);
+  const pct=all.length?(all.reduce((x,y)=>x+y,0)/all.length/6*100).toFixed(1):'0';
+  return `<div class="grid" style="margin:10px 0"><div class="stat"><b>${pct}%</b><span>نسبة ${esc(s.name)}</span></div><div class="stat"><b>${s.students.length}</b><span>تلاميذ ${esc(s.name)}</span></div></div>
+    <div class="row"><input class="in" id="sn" placeholder="اسم المادة (مثل: قراءة، إملاء)"><button class="btn pri" id="sa">＋ مادة</button></div>
+    <div class="row"><input class="in" id="sq" placeholder="ابحث عن تلميذ..."><button class="btn" id="sqm">🎤</button><button class="btn" id="so">الترتيب: ${evSort==='top'?'الأعلى':'أبجدي'}</button></div>
+    <div class="row"><button class="btn" id="an">الانتقال التلقائي للتلميذ التالي: ${S.autoNext===false?'متوقف':'مفعّل'}</button></div>
+    <div class="tbl"><table><tr><th>م</th><th>التلميذ</th>${subs.map(b=>`<th>${esc(b.name)} <button class="x" data-ds="${b.id}" style="width:26px;height:26px">✕</button></th>`).join('')}</tr>
+    ${list.map((t,i)=>`<tr data-n="${esc(t.name)}"><td>${i+1}</td><td class="nm"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> ${esc(t.name)}${avgOf(t)>0&&avgOf(t)===mx?'<div><span style="background:#2fbf71;color:#fff;border-radius:12px;padding:2px 10px;font-size:12px">الأعلى 🏆</span></div>':''}</td>${subs.map(b=>{const v=((S.ev[t.id]||{})[b.id])||'';return `<td><select class="lvsel l${LV.indexOf(v)+1}" data-e="${t.id}|${b.id}"><option value="">—</option>${LV.map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join('')}</select></td>`}).join('')}</tr>`).join('')}</table></div>
+    ${subs.length?'':'<p class="note">اضغط «＋ مادة» لإضافة عمود مادة، ثم اختر التقييم لكل تلميذ.</p>'}`;
 }
 function scope(){const c=cls(),s=sec();return rsAll?c.sections.flatMap(x=>x.students.map(t=>({t,sn:x.name}))):s.students.map(t=>({t,sn:s.name}))}
 function rank(list){const subs=S.evs[cls().id]||[];return list.map(({t,sn})=>{const v=subs.map(b=>LV.indexOf(((S.ev[t.id]||{})[b.id])||'')+1).filter(k=>k>0);return {t,sn,avg:v.length?v.reduce((x,y)=>x+y,0)/v.length:0}}).sort((x,y)=>y.avg-x.avg||x.t.name.localeCompare(y.t.name,'ar'))}
