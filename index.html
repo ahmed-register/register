@@ -37,6 +37,9 @@ th{background:linear-gradient(120deg,#6c4bff,#00b3ff);color:#fff}td.nm{text-alig
 .lvsel{border:0;border-radius:10px;padding:10px 6px;font:inherit;min-width:92px;text-align:center;background:var(--card);color:var(--mu)}
 .l1{background:#f5b7b7;color:#1c2233}.l2{background:#f7d9c4;color:#1c2233}.l3{background:#fbf0b0;color:#1c2233}.l4{background:#c3ebc9;color:#1c2233}.l5{background:#b5dff0;color:#1c2233}.l6{background:#c9b8f5;color:#1c2233}
 .stat{background:var(--card);border:1px solid var(--bd);border-radius:18px;padding:14px;text-align:center}.stat b{display:block;font-size:30px;color:var(--ac)}.stat span{font-size:13px;color:var(--mu)}
+#sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8;display:none;align-items:flex-end}#sheet.on{display:flex}
+#sheet .box{background:var(--card);width:100%;max-width:640px;margin:auto;border-radius:24px 24px 0 0;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
+.lvb{border:0;border-radius:16px;padding:22px 8px;font:inherit;font-size:20px;font-weight:700;cursor:pointer;color:#1c2233}.lvsel{cursor:pointer}
 </style>
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#6c4bff"><link rel="apple-touch-icon" href="icon-192.png">
 </head>
@@ -47,6 +50,7 @@ th{background:linear-gradient(120deg,#6c4bff,#00b3ff);color:#fff}td.nm{text-alig
 <div id="msg"></div>
 <button class="btn pri" id="li">تسجيل الدخول</button><button class="btn" id="su">إنشاء حساب جديد</button><button class="btn" id="fp">نسيت كلمة المرور</button></div>
 <div id="app"></div>
+<div id="sheet"><div class="box"><b id="shn" style="font-size:22px"></b><div id="shs" class="note" style="margin:6px 0 14px"></div><div class="grid" id="shg" style="margin:0 0 12px;gap:10px"></div><div class="row"><button class="btn" id="shc" style="flex:1">مسح التقييم</button><button class="btn" id="shk" style="flex:1">تخطّ</button><button class="btn pri" id="shx" style="flex:1">إغلاق</button></div></div></div>
 <script>
 const $=s=>document.querySelector(s);
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -193,7 +197,7 @@ function bind2(s){
   if($('#r1')){$('#r1').onclick=()=>{rsAll=false;render()};$('#r2').onclick=()=>{rsAll=true;render()}}
   if($('#sa'))$('#sa').onclick=()=>{const n=$('#sn').value.trim();if(!n)return;S.evs[cid]=S.evs[cid]||[];S.evs[cid].push({id:'b'+uid(),name:n});save();render()};
   A.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{if(confirm('حذف هذه المادة من التقييمات؟')){S.evs[cid]=S.evs[cid].filter(x=>x.id!==b.dataset.ds);save();render()}});
-  A.querySelectorAll('[data-e]').forEach(x=>x.onchange=()=>{const [sid,bid]=x.dataset.e.split('|');S.ev[sid]=S.ev[sid]||{};if(x.value==='')delete S.ev[sid][bid];else S.ev[sid][bid]=x.value;x.className='lvsel l'+(LV.indexOf(x.value)+1);save();if(x.value&&S.autoNext!==false){let r=x.closest('tr').nextElementSibling;while(r&&r.style.display==='none')r=r.nextElementSibling;const n=r&&r.querySelector('select[data-e$="|'+bid+'"]');if(n){n.scrollIntoView({block:'center'});n.focus();setTimeout(()=>{try{n.showPicker()}catch(e){}},150)}}});
+  A.querySelectorAll('[data-c]').forEach(x=>x.onclick=()=>{const [sid,bid]=x.dataset.c.split('|');openSheet(sid,bid)});
   if($('#sq'))$('#sq').oninput=e=>{const q=e.target.value.trim();A.querySelectorAll('tr[data-n]').forEach(r=>r.style.display=r.dataset.n.includes(q)?'':'none')};
   if($('#gs')){$('#gs').onchange=e=>{gs=e.target.value;render()};$('#gm').onchange=e=>{gm=e.target.value;render()}}
   A.querySelectorAll('[data-g]').forEach(i=>i.onchange=()=>{S.gr[s.id]=S.gr[s.id]||{};S.gr[s.id][gs]=S.gr[s.id][gs]||{};S.gr[s.id][gs][gm]=S.gr[s.id][gs][gm]||{};const o=S.gr[s.id][gs][gm];if(i.value==='')delete o[i.dataset.g];else o[i.dataset.g]=i.value;save();render()});
@@ -218,7 +222,7 @@ function evBlock(c,s){
     <div class="row"><input class="in" id="sq" placeholder="ابحث عن تلميذ..."><button class="btn" id="sqm">🎤</button><button class="btn" id="so">الترتيب: ${evSort==='top'?'الأعلى':'أبجدي'}</button></div>
     <div class="row"><button class="btn" id="an">الانتقال التلقائي للتلميذ التالي: ${S.autoNext===false?'متوقف':'مفعّل'}</button></div>
     <div class="tbl"><table><tr><th>م</th><th>التلميذ</th>${subs.map(b=>`<th>${esc(b.name)} <button class="x" data-ds="${b.id}" style="width:26px;height:26px">✕</button></th>`).join('')}</tr>
-    ${list.map((t,i)=>`<tr data-n="${esc(t.name)}"><td>${i+1}</td><td class="nm"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> ${esc(t.name)}${avgOf(t)>0&&avgOf(t)===mx?'<div><span style="background:#2fbf71;color:#fff;border-radius:12px;padding:2px 10px;font-size:12px">الأعلى 🏆</span></div>':''}</td>${subs.map(b=>{const v=((S.ev[t.id]||{})[b.id])||'';return `<td><select class="lvsel l${LV.indexOf(v)+1}" data-e="${t.id}|${b.id}"><option value="">—</option>${LV.map(o=>`<option ${o===v?'selected':''}>${o}</option>`).join('')}</select></td>`}).join('')}</tr>`).join('')}</table></div>
+    ${list.map((t,i)=>`<tr data-n="${esc(t.name)}" data-sid="${t.id}"><td>${i+1}</td><td class="nm"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> ${esc(t.name)}${avgOf(t)>0&&avgOf(t)===mx?'<div><span style="background:#2fbf71;color:#fff;border-radius:12px;padding:2px 10px;font-size:12px">الأعلى 🏆</span></div>':''}</td>${subs.map(b=>{const v=((S.ev[t.id]||{})[b.id])||'';return `<td><button class="lvsel l${LV.indexOf(v)+1}" data-c="${t.id}|${b.id}">${v||'—'}</button></td>`}).join('')}</tr>`).join('')}</table></div>
     ${subs.length?'':'<p class="note">اضغط «＋ مادة» لإضافة عمود مادة، ثم اختر التقييم لكل تلميذ.</p>'}`;
 }
 function scope(){const c=cls(),s=sec();return rsAll?c.sections.flatMap(x=>x.students.map(t=>({t,sn:x.name}))):s.students.map(t=>({t,sn:s.name}))}
@@ -228,6 +232,14 @@ function resText(s){
   return 'ترتيب التلاميذ — '+(rsAll?cls().name:s.name)+'\n'+R.map((r,i)=>(i<10?'🏆 ':'')+(i+1)+'. '+r.t.name+' — '+LV[Math.max(1,Math.round(r.avg))-1]+' ('+Math.round(r.avg/6*100)+'%)').join('\n')
 }
 
+let WS=null;
+function openSheet(sid,bid){const order=[...document.querySelectorAll('tr[data-sid]')].filter(r=>r.style.display!=='none').map(r=>r.dataset.sid);WS={order,idx:Math.max(0,order.indexOf(sid)),bid};stepSheet()}
+function stepSheet(){if(!WS)return;if(WS.idx>=WS.order.length){closeSheet();return}const sid=WS.order[WS.idx],st=sec().students.find(t=>t.id===sid),b=(S.evs[cls().id]||[]).find(x=>x.id===WS.bid);if(!st||!b){closeSheet();return}$('#shn').textContent=st.name;$('#shs').textContent=b.name+' — اختر التقييم وسينتقل تلقائيًا للتلميذ التالي ('+(WS.idx+1)+'/'+WS.order.length+')';$('#sheet').classList.add('on')}
+function closeSheet(){$('#sheet').classList.remove('on');WS=null;render()}
+function pickLevel(v){if(!WS)return;const sid=WS.order[WS.idx];S.ev[sid]=S.ev[sid]||{};if(v)S.ev[sid][WS.bid]=v;else delete S.ev[sid][WS.bid];save();if(S.autoNext===false){closeSheet();return}WS.idx++;stepSheet()}
+$('#shg').innerHTML=LV.map((o,i)=>`<button class="lvb l${i+1}" data-lv="${o}">${o}</button>`).join('');
+$('#shg').onclick=e=>{const b=e.target.closest('[data-lv]');if(b)pickLevel(b.dataset.lv)};
+$('#shc').onclick=()=>pickLevel('');$('#shk').onclick=()=>{if(WS){WS.idx++;stepSheet()}};$('#shx').onclick=closeSheet;
 window.attach=(uid,fs)=>{
   KEY='reg_v1_'+uid;S=DEF();lastJson='';
   try{const l=localStorage.getItem(KEY);if(l)load(l)}catch(e){}
