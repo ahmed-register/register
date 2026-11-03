@@ -40,7 +40,7 @@ th{background:#4d6dff;color:#fff;position:sticky;top:0;z-index:2}th.nm,td.nm{pos
 #sheet{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:8;display:none;align-items:flex-end}#sheet.on{display:flex}
 #sheet .box{background:var(--card);width:100%;max-width:640px;margin:auto;border-radius:24px 24px 0 0;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
 .lvb{border:0;border-radius:16px;padding:22px 8px;font:inherit;font-size:20px;font-weight:700;cursor:pointer;color:#1c2233}.lvsel{cursor:pointer}
-.tsel{border:1px solid var(--bd);border-radius:10px;padding:8px 4px;font:inherit;background:var(--card);color:var(--tx);min-width:112px;width:auto}
+.tsel{border:1px solid var(--bd);border-radius:10px;padding:8px 4px;font:inherit;background:var(--card);color:var(--tx);width:118px;text-align:center}
 </style>
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#6c4bff"><link rel="apple-touch-icon" href="icon-192.png">
 </head>
@@ -152,7 +152,7 @@ function render(){
   }else if(view==='tt'){
     h=`${back}<div class="hd">🗓️ الجدول الأسبوعي</div>${pick}
     <div class="tbl"><table><tr><th class="nm" style="min-width:80px">اليوم</th>${[1,2,3,4,5,6].map(i=>`<th>الحصة ${i}</th>`).join('')}</tr>
-    ${DAYS.map(d=>{const row=((S.tt[s.id]||{})[d])||[];return `<tr><td class="nm" style="min-width:80px;font-weight:700;text-align:center">${d}</td>${[0,1,2,3,4,5].map(i=>`<td><select class="tsel" data-tt="${d}|${i}">${['',...ALL].map(o=>`<option value="${o}" ${row[i]===o?'selected':''}>${o||'—'}</option>`).join('')}</select></td>`).join('')}</tr>`}).join('')}</table></div>`;
+    ${DAYS.map(d=>{const row=((S.tt[s.id]||{})[d])||[];return `<tr><td class="nm" style="min-width:80px;font-weight:700;text-align:center">${d}</td>${[0,1,2,3,4,5].map(i=>`<td><input class="tsel" data-tt="${d}|${i}" value="${esc(row[i]||'')}" placeholder="—"></td>`).join('')}</tr>`}).join('')}</table></div>`;
   }else if(view==='lp'){
     const L=S.lp[s.id]||[];
     h=`${back}<div class="hd">📚 تحضير الدروس</div>${pick}
@@ -208,7 +208,7 @@ function bind2(s){
   if($('#sq'))$('#sq').oninput=e=>{const q=e.target.value.trim();A.querySelectorAll('tr[data-n]').forEach(r=>r.style.display=r.dataset.n.includes(q)?'':'none')};
   if($('#gs')){$('#gs').onchange=e=>{gs=e.target.value;render()};$('#gm').onchange=e=>{gm=e.target.value;render()}}
   A.querySelectorAll('[data-g]').forEach(i=>i.onchange=()=>{S.gr[s.id]=S.gr[s.id]||{};S.gr[s.id][gs]=S.gr[s.id][gs]||{};S.gr[s.id][gs][gm]=S.gr[s.id][gs][gm]||{};const o=S.gr[s.id][gs][gm];if(i.value==='')delete o[i.dataset.g];else o[i.dataset.g]=i.value;save();render()});
-  A.querySelectorAll('[data-tt]').forEach(x=>x.onchange=()=>{const [d,k]=x.dataset.tt.split('|');S.tt[s.id]=S.tt[s.id]||{};const t=S.tt[s.id];t[d]=t[d]||['','','','','',''];t[d][k]=x.value;save()});
+  A.querySelectorAll('[data-tt]').forEach(x=>x.oninput=()=>{const [d,k]=x.dataset.tt.split('|');S.tt[s.id]=S.tt[s.id]||{};const t=S.tt[s.id];t[d]=t[d]||['','','','','',''];t[d][k]=x.value;save()});
   if($('#lpa'))$('#lpa').onclick=()=>{const t=$('#lpt').value.trim();if(!t)return;S.lp[s.id]=S.lp[s.id]||[];S.lp[s.id].unshift({id:uid(),d:$('#lpd').value,s:$('#lps').value,t,n:$('#lpn').value.trim()});save();render()};
   A.querySelectorAll('[data-lp]').forEach(b=>b.onclick=()=>{if(confirm('حذف السجل؟')){S.lp[s.id]=S.lp[s.id].filter(x=>x.id!==b.dataset.lp);save();render()}});
 }
