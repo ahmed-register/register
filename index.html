@@ -206,7 +206,8 @@ function bind2(s){
   const A=$('#app'),cid=cls().id;
   A.querySelectorAll('input.mk').forEach(i=>i.oninput=()=>{const [sid,k,j]=i.dataset.k.split('|');S.mk[sid]=S.mk[sid]||{};const m=S.mk[sid];let v=i.value,n=num(v);if(n!=null&&n>100){v='100';i.value=v;n=100}if(n!=null&&n<0){v='0';i.value=v;n=0}
     if(k==='mid'){if(v==='')delete m.mid;else m.mid=v}else{m[k]=m[k]||['','',''];m[k][+j]=v}
-    i.parentNode.classList.toggle('low',n!=null&&n<50);recalcRow(i.closest('tr'),sid);save()});
+    i.parentNode.classList.toggle('low',n!=null&&n<50);recalcRow(i.closest('tr'),sid);save();if(S.autoNext!==false&&n!=null&&!v.includes('.')&&((v.length===2&&v!=='10')||v.length>=3))nextMk(i)});
+  A.querySelectorAll('input.mk').forEach(i=>i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();nextMk(i)}});
   A.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{S.cur.s=b.dataset.sc;save();render()});
   if($('#an'))$('#an').onclick=()=>{S.autoNext=(S.autoNext===false);save();render()};
   if($('#so'))$('#so').onclick=()=>{evSort=evSort==='alpha'?'top':'alpha';render()};
@@ -233,13 +234,21 @@ function calc(m){m=m||{};const av=l=>{l=(l||[]).map(num).filter(x=>x!=null);retu
   return {a1,a2,yr,res:yr==null?'':(yr>=50?'ناجح':'راسب')}}
 function recalcRow(tr,sid){const r=calc(S.mk[sid]);const st=(k,v,low)=>{const c=tr.querySelector('[data-f="'+k+'"]');c.textContent=v;c.classList.toggle('low',!!low)};
   st('a1',fmt(r.a1),r.a1!=null&&r.a1<50);st('a2',fmt(r.a2),r.a2!=null&&r.a2<50);st('yr',fmt(r.yr),r.yr!=null&&r.yr<50);st('res',r.res,r.res==='راسب')}
+function nextMk(i){
+  const col=i.dataset.k.split('|').slice(1).join('|'),cols=['a|0','a|1','a|2','mid|0','b|0','b|1','b|2'];
+  let r=i.closest('tr').nextElementSibling;while(r&&r.style.display==='none')r=r.nextElementSibling;
+  let n=r&&r.querySelector('input.mk[data-k$="|'+col+'"]');
+  if(!n){const ci=cols.indexOf(col);if(ci>=0&&ci<cols.length-1){const f=[...i.closest('table').querySelectorAll('tr[data-sid]')].find(t=>t.style.display!=='none');n=f&&f.querySelector('input.mk[data-k$="|'+cols[ci+1]+'"]')}}
+  if(n){n.scrollIntoView({block:'center',inline:'center'});n.focus();try{n.select()}catch(e){}}else i.blur();
+}
 function markBlock(c,s){
   const list=[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar'));
-  const inp=(t,k,j,v)=>{const n=num(v);return `<td class="${n!=null&&n<50?'low':''}"><input class="mk" type="number" inputmode="decimal" min="0" max="100" step="any" data-k="${t.id}|${k}|${j}" value="${v==null?'':esc(v)}"></td>`};
+  const inp=(t,k,j,v)=>{const n=num(v);return `<td class="${n!=null&&n<50?'low':''}"><input class="mk" type="number" inputmode="decimal" enterkeyhint="next" min="0" max="100" step="any" data-k="${t.id}|${k}|${j}" value="${v==null?'':esc(v)}"></td>`};
   const cc=(k,v,low)=>`<td class="c ${low?'low':''}" data-f="${k}">${v}</td>`;
   const hd=(c1,a,b)=>`<th class="${c1}">${a}<br>${b}</th>`;
   return `<input id="sq" placeholder="ابحث عن تلميذ..." style="margin-top:8px">
-    <div class="note" style="margin:6px 0">الدرجات من 100، والخلية الحمراء = أقل من 50، والمعدلات والنتيجة تُحسب تلقائيًا.</div>
+    <div class="note" style="margin:6px 0">الدرجات من 100، والخلية الحمراء = أقل من 50، والمعدلات والنتيجة تُحسب تلقائيًا. عند كتابة رقمين (أو 100) تنتقل الخانة للتلميذ التالي، وللأرقام الأخرى اضغط «التالي» في لوحة المفاتيح.</div>
+    <div class="row"><button class="btn" id="an">الانتقال التلقائي بين التلاميذ: ${S.autoNext===false?'متوقف':'مفعّل'}</button></div>
     <div class="tbl"><table><tr><th class="sn">م</th><th class="nm2">التلميذ</th>${[1,2,3].map(i=>hd('t1','ف1','امتحان '+i)).join('')}${hd('t1','معدل','الفصل 1')}${hd('t3','امتحان','نصف السنة')}${[1,2,3].map(i=>hd('t2','ف2','امتحان '+i)).join('')}${hd('t2','معدل','الفصل 2')}${hd('t3','السعي','السنوي')}${hd('t3','النتيجة','النهائية')}</tr>
     ${list.map((t,i)=>{const m=S.mk[t.id]||{},r=calc(m);return `<tr data-n="${esc(t.name)}" data-sid="${t.id}"><td class="sn">${i+1}</td><td class="nm2"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> ${esc(t.name)}</td>${[0,1,2].map(j=>inp(t,'a',j,(m.a||[])[j])).join('')}${cc('a1',fmt(r.a1),r.a1!=null&&r.a1<50)}${inp(t,'mid',0,m.mid)}${[0,1,2].map(j=>inp(t,'b',j,(m.b||[])[j])).join('')}${cc('a2',fmt(r.a2),r.a2!=null&&r.a2<50)}${cc('yr',fmt(r.yr),r.yr!=null&&r.yr<50)}${cc('res',r.res,r.res==='راسب')}</tr>`}).join('')}</table></div>
     ${list.length?'':'<p class="note">أضف التلاميذ أولًا من الخانات أعلاه.</p>'}`;
@@ -292,7 +301,7 @@ window.attach=(uid,fs)=>{
       }
       sync=(fc&&first)?'⏳ جارٍ المزامنة…':'✅ تمت المزامنة';
     }else{sync='✅ متصل';save()}
-    if(first||ch||sync!==prev)render();
+    if(first||ch)render();else{const q=document.querySelector('.sub');if(q)q.textContent=syncText()}
     first=false;
   },()=>{sync=navigator.onLine?'⚠️ تعذرت المزامنة':'📴 بدون إنترنت — يعمل من النسخة المحفوظة';render()});
 };
