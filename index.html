@@ -62,14 +62,15 @@ const $=s=>document.querySelector(s);
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
 const today=()=>new Date().toISOString().slice(0,10);
-const DEF=()=>({classes:[{id:'c1',name:'الصف الرابع',sections:[{id:'s1',name:'شعبة أ',students:[]},{id:'s2',name:'شعبة ب',students:[]}]}],att:{},gr:{},tt:{},lp:{},ev:{},evs:{},mk:{},email:'',cur:{c:'c1',s:'s1'}});
+const DEF=()=>({classes:[{id:'c1',name:'الصف الرابع',sections:[{id:'s1',name:'شعبة أ',students:[]},{id:'s2',name:'شعبة ب',students:[]}]}],att:{},gr:{},tt:{},lp:{},ev:{},evs:{},mk:{},mks:{},email:'',cur:{c:'c1',s:'s1'}});
 let S=DEF(),KEY='reg_v1',unsub=null;
 const SUBJ=['القراءة','القواعد','المحفوظات','التعبير','الإملاء'];
 const ALL=[...SUBJ,'الرياضيات','العلوم','التربية الإسلامية','الاجتماعيات','التربية الفنية','التربية الرياضية','الإنكليزية'];
 const MON=['تشرين الأول','تشرين الثاني','كانون الأول','كانون الثاني','شباط','آذار','نيسان','أيار'];
 const DAYS=['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
 let gs=SUBJ[0],gm=MON[0],rsAll=false,evSort='alpha';
-function ensure(){S.gr=S.gr||{};S.tt=S.tt||{};S.lp=S.lp||{};S.ev=S.ev||{};S.evs=S.evs||{};S.mk=S.mk||{}}
+function ensure(){S.gr=S.gr||{};S.tt=S.tt||{};S.lp=S.lp||{};S.ev=S.ev||{};S.evs=S.evs||{};S.mk=S.mk||{};S.mks=S.mks||{}}
+let msub=null;
 const LV=['ضعيف','مقبول','متوسط','جيد','جيد جدا','ممتاز'];
 let view='home',date=today(),adding=null,sync='⏳',ref=null,lastJson='',timer=null,pend=0;
 
@@ -146,8 +147,8 @@ function render(){
     h=`${back}<div class="hd">سجل التلاميذ</div>${secChips(c,s)}
     <div class="row"><input class="in" id="nm" placeholder="اسم تلميذ جديد"><button class="btn" id="mic">🎤</button><button class="btn pri" id="add">إضافة</button></div>
     <textarea id="bulk" rows="3" placeholder="أو الصق عدة أسماء، كل اسم في سطر"></textarea>
-    <div class="row"><button class="btn" id="addb">إضافة الأسماء</button></div>
-    ${isUpper(c)?markBlock(c,s):evBlock(c,s)}`;
+    <div class="row"><button class="btn" id="addb">إضافة الأسماء</button><input class="in" id="sn" placeholder="اسم مادة جديدة" style="min-width:130px"><button class="btn pri" id="sa">＋ مادة</button></div>
+    ${isUpper(c)?markBlock(c,s):evBlock(c,s,true)}`;
   }else if(view==='ev'){
     h=`${back}<div class="hd">⭐ التقييمات</div>${pick}${evBlock(c,s)}`;
   }else if(view==='gr'){
@@ -204,16 +205,24 @@ function render(){
 }
 function bind2(s){
   const A=$('#app'),cid=cls().id;
-  A.querySelectorAll('input.mk').forEach(i=>i.oninput=()=>{const [sid,k,j]=i.dataset.k.split('|');S.mk[sid]=S.mk[sid]||{};const m=S.mk[sid];let v=i.value,n=num(v);if(n!=null&&n>100){v='100';i.value=v;n=100}if(n!=null&&n<0){v='0';i.value=v;n=0}
+  A.querySelectorAll('input.mk').forEach(i=>i.oninput=()=>{const [sid,k,j]=i.dataset.k.split('|'),sm=i.dataset.m;S.mk[sid]=S.mk[sid]||{};S.mk[sid][sm]=S.mk[sid][sm]||{};const m=S.mk[sid][sm];let v=i.value,n=num(v);if(n!=null&&n>100){v='100';i.value=v;n=100}if(n!=null&&n<0){v='0';i.value=v;n=0}
     if(k==='mid'){if(v==='')delete m.mid;else m.mid=v}else{m[k]=m[k]||['','',''];m[k][+j]=v}
-    i.parentNode.classList.toggle('low',n!=null&&n<50);recalcRow(i.closest('tr'),sid);save();if(S.autoNext!==false&&n!=null&&!v.includes('.')&&((v.length===2&&v!=='10')||v.length>=3))nextMk(i)});
+    i.parentNode.classList.toggle('low',n!=null&&n<50);recalcRow(i.closest('tr'),sid,sm);save();if(S.autoNext!==false&&n!=null&&!v.includes('.')&&((v.length===2&&v!=='10')||v.length>=3))nextMk(i)});
   A.querySelectorAll('input.mk').forEach(i=>i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();nextMk(i)}});
   A.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{S.cur.s=b.dataset.sc;save();render()});
   if($('#an'))$('#an').onclick=()=>{S.autoNext=(S.autoNext===false);save();render()};
   if($('#so'))$('#so').onclick=()=>{evSort=evSort==='alpha'?'top':'alpha';render()};
   if($('#sqm'))$('#sqm').onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){alert('الميكروفون غير مدعوم هنا');return}const r=new R();r.lang='ar-SA';r.onresult=e=>{const i=$('#sq');i.value=e.results[0][0].transcript;i.dispatchEvent(new Event('input'))};r.onerror=()=>alert('تعذر استخدام الميكروفون');try{r.start()}catch(e){}};
   if($('#r1')){$('#r1').onclick=()=>{rsAll=false;render()};$('#r2').onclick=()=>{rsAll=true;render()}}
-  if($('#sa'))$('#sa').onclick=()=>{const n=$('#sn').value.trim();if(!n)return;S.evs[cid]=S.evs[cid]||[];S.evs[cid].push({id:'b'+uid(),name:n});save();render()};
+  if($('#sa')){const add=()=>{const n=$('#sn').value.trim();if(!n)return;
+    if(view==='stu'&&isUpper(cls())){S.mks[cid]=S.mks[cid]||[];const id='m'+uid();
+      if(!S.mks[cid].length)Object.keys(S.mk).forEach(sid=>{const o=S.mk[sid];if(o&&(o.a||o.b||o.mid!=null)){const q={};if(o.a)q.a=o.a;if(o.b)q.b=o.b;if(o.mid!=null)q.mid=o.mid;S.mk[sid]={[id]:q}}});
+      S.mks[cid].push({id,name:n});msub=id}
+    else{S.evs[cid]=S.evs[cid]||[];S.evs[cid].push({id:'b'+uid(),name:n})}
+    save();render()};
+    $('#sa').onclick=add;$('#sn').onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();add()}}}
+  A.querySelectorAll('[data-ms]').forEach(b=>b.onclick=()=>{msub=b.dataset.ms;render()});
+  A.querySelectorAll('[data-dm]').forEach(b=>b.onclick=()=>{if(confirm('حذف هذه المادة وجميع درجاتها؟')){const id=b.dataset.dm;S.mks[cid]=(S.mks[cid]||[]).filter(x=>x.id!==id);Object.keys(S.mk).forEach(sid=>{if(S.mk[sid])delete S.mk[sid][id]});if(msub===id)msub=null;save();render()}});
   A.querySelectorAll('[data-ds]').forEach(b=>b.onclick=()=>{if(confirm('حذف هذه المادة من التقييمات؟')){S.evs[cid]=S.evs[cid].filter(x=>x.id!==b.dataset.ds);save();render()}});
   A.querySelectorAll('[data-c]').forEach(x=>x.onclick=()=>{const [sid,bid]=x.dataset.c.split('|');openSheet(sid,bid)});
   if($('#sq'))$('#sq').oninput=e=>{const q=e.target.value.trim();A.querySelectorAll('tr[data-n]').forEach(r=>r.style.display=r.dataset.n.includes(q)?'':'none')};
@@ -232,7 +241,7 @@ const fmt=x=>x==null?'':String(Math.round(x*10)/10);
 function calc(m){m=m||{};const av=l=>{l=(l||[]).map(num).filter(x=>x!=null);return l.length?l.reduce((x,y)=>x+y,0)/l.length:null};
   const a1=av(m.a),a2=av(m.b),mid=num(m.mid),yr=(a1!=null&&a2!=null&&mid!=null)?(a1+mid+a2)/3:null;
   return {a1,a2,yr,res:yr==null?'':(yr>=50?'ناجح':'راسب')}}
-function recalcRow(tr,sid){const r=calc(S.mk[sid]);const st=(k,v,low)=>{const c=tr.querySelector('[data-f="'+k+'"]');c.textContent=v;c.classList.toggle('low',!!low)};
+function recalcRow(tr,sid,sm){const r=calc((S.mk[sid]||{})[sm]);const st=(k,v,low)=>{const c=tr.querySelector('[data-f="'+k+'"]');c.textContent=v;c.classList.toggle('low',!!low)};
   st('a1',fmt(r.a1),r.a1!=null&&r.a1<50);st('a2',fmt(r.a2),r.a2!=null&&r.a2<50);st('yr',fmt(r.yr),r.yr!=null&&r.yr<50);st('res',r.res,r.res==='راسب')}
 function nextMk(i){
   const col=i.dataset.k.split('|').slice(1).join('|'),cols=['a|0','a|1','a|2','mid|0','b|0','b|1','b|2'];
@@ -243,17 +252,21 @@ function nextMk(i){
 }
 function markBlock(c,s){
   const list=[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar'));
-  const inp=(t,k,j,v)=>{const n=num(v);return `<td class="${n!=null&&n<50?'low':''}"><input class="mk" type="number" inputmode="decimal" enterkeyhint="next" min="0" max="100" step="any" data-k="${t.id}|${k}|${j}" value="${v==null?'':esc(v)}"></td>`};
+  const subs=(S.mks[c.id]=S.mks[c.id]||[]);const sub=subs.find(x=>x.id===msub)||subs[0];
+  if(!sub)return '<p class="note">اكتب اسم المادة (مثل: القراءة أو الرياضيات) في المربع بجانب «إضافة الأسماء» ثم اضغط «＋ مادة»، فيظهر لها جدول درجات خاص بها.</p>';
+  msub=sub.id;
+  const inp=(t,k,j,v)=>{const n=num(v);return `<td class="${n!=null&&n<50?'low':''}"><input class="mk" type="number" inputmode="decimal" enterkeyhint="next" min="0" max="100" step="any" data-k="${t.id}|${k}|${j}" data-m="${sub.id}" value="${v==null?'':esc(v)}"></td>`};
   const cc=(k,v,low)=>`<td class="c ${low?'low':''}" data-f="${k}">${v}</td>`;
   const hd=(c1,a,b)=>`<th class="${c1}">${a}<br>${b}</th>`;
-  return `<input id="sq" placeholder="ابحث عن تلميذ..." style="margin-top:8px">
+  return `<div class="row">${subs.map(x=>`<button class="chip ${x.id===sub.id?'on':''}" data-ms="${x.id}">${esc(x.name)}</button>`).join('')}<button class="btn" data-dm="${sub.id}">🗑 حذف المادة</button></div>
+    <input id="sq" placeholder="ابحث عن تلميذ..." style="margin-top:8px">
     <div class="note" style="margin:6px 0">الدرجات من 100، والخلية الحمراء = أقل من 50، والمعدلات والنتيجة تُحسب تلقائيًا. عند كتابة رقمين (أو 100) تنتقل الخانة للتلميذ التالي، وللأرقام الأخرى اضغط «التالي» في لوحة المفاتيح.</div>
     <div class="row"><button class="btn" id="an">الانتقال التلقائي بين التلاميذ: ${S.autoNext===false?'متوقف':'مفعّل'}</button></div>
     <div class="tbl"><table><tr><th class="sn">م</th><th class="nm2">التلميذ</th>${[1,2,3].map(i=>hd('t1','ف1','امتحان '+i)).join('')}${hd('t1','معدل','الفصل 1')}${hd('t3','امتحان','نصف السنة')}${[1,2,3].map(i=>hd('t2','ف2','امتحان '+i)).join('')}${hd('t2','معدل','الفصل 2')}${hd('t3','السعي','السنوي')}${hd('t3','النتيجة','النهائية')}</tr>
-    ${list.map((t,i)=>{const m=S.mk[t.id]||{},r=calc(m);return `<tr data-n="${esc(t.name)}" data-sid="${t.id}"><td class="sn">${i+1}</td><td class="nm2"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> ${esc(t.name)}</td>${[0,1,2].map(j=>inp(t,'a',j,(m.a||[])[j])).join('')}${cc('a1',fmt(r.a1),r.a1!=null&&r.a1<50)}${inp(t,'mid',0,m.mid)}${[0,1,2].map(j=>inp(t,'b',j,(m.b||[])[j])).join('')}${cc('a2',fmt(r.a2),r.a2!=null&&r.a2<50)}${cc('yr',fmt(r.yr),r.yr!=null&&r.yr<50)}${cc('res',r.res,r.res==='راسب')}</tr>`}).join('')}</table></div>
+    ${list.map((t,i)=>{const m=((S.mk[t.id]||{})[sub.id])||{},r=calc(m);return `<tr data-n="${esc(t.name)}" data-sid="${t.id}"><td class="sn">${i+1}</td><td class="nm2"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> ${esc(t.name)}</td>${[0,1,2].map(j=>inp(t,'a',j,(m.a||[])[j])).join('')}${cc('a1',fmt(r.a1),r.a1!=null&&r.a1<50)}${inp(t,'mid',0,m.mid)}${[0,1,2].map(j=>inp(t,'b',j,(m.b||[])[j])).join('')}${cc('a2',fmt(r.a2),r.a2!=null&&r.a2<50)}${cc('yr',fmt(r.yr),r.yr!=null&&r.yr<50)}${cc('res',r.res,r.res==='راسب')}</tr>`}).join('')}</table></div>
     ${list.length?'':'<p class="note">أضف التلاميذ أولًا من الخانات أعلاه.</p>'}`;
 }
-function evBlock(c,s){
+function evBlock(c,s,noAdd){
   const subs=(S.evs[c.id]=S.evs[c.id]||[]);
   const ks=t=>subs.map(b=>LV.indexOf(((S.ev[t.id]||{})[b.id])||'')+1).filter(k=>k>0);
   const avgOf=t=>{const v=ks(t);return v.length?v.reduce((x,y)=>x+y,0)/v.length:0};
@@ -263,7 +276,7 @@ function evBlock(c,s){
   const all=s.students.flatMap(ks);
   const pct=all.length?(all.reduce((x,y)=>x+y,0)/all.length/6*100).toFixed(1):'0';
   return `<div class="grid" style="margin:10px 0"><div class="stat"><b>${pct}%</b><span>نسبة ${esc(s.name)}</span></div><div class="stat"><b>${s.students.length}</b><span>تلاميذ ${esc(s.name)}</span></div></div>
-    <div class="row"><input class="in" id="sn" placeholder="اسم المادة (مثل: قراءة، إملاء)"><button class="btn pri" id="sa">＋ مادة</button></div>
+    ${noAdd?'':'<div class="row"><input class="in" id="sn" placeholder="اسم المادة (مثل: قراءة، إملاء)"><button class="btn pri" id="sa">＋ مادة</button></div>'}
     <div class="row"><input class="in" id="sq" placeholder="ابحث عن تلميذ..."><button class="btn" id="sqm">🎤</button><button class="btn" id="so">الترتيب: ${evSort==='top'?'الأعلى':'أبجدي'}</button></div>
     <div class="row"><button class="btn" id="an">الانتقال التلقائي للتلميذ التالي: ${S.autoNext===false?'متوقف':'مفعّل'}</button></div>
     <div class="tbl"><table><tr><th class="nm">التلميذ</th>${subs.map(b=>`<th>${esc(b.name)} <button class="x" data-ds="${b.id}" style="width:26px;height:26px">✕</button></th>`).join('')}</tr>
