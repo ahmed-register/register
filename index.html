@@ -41,6 +41,11 @@ th{background:#4d6dff;color:#fff;position:sticky;top:0;z-index:2}th.nm,td.nm{pos
 #sheet .box{background:var(--card);width:100%;max-width:640px;margin:auto;border-radius:24px 24px 0 0;padding:18px;padding-bottom:calc(18px + env(safe-area-inset-bottom,0px))}
 .lvb{border:0;border-radius:16px;padding:22px 8px;font:inherit;font-size:20px;font-weight:700;cursor:pointer;color:#1c2233}.lvsel{cursor:pointer}
 .tsel{border:1px solid var(--bd);border-radius:10px;padding:8px 4px;font:inherit;background:var(--card);color:var(--tx);width:118px;text-align:center}
+th.t2{background:#1fa37a}th.t3{background:#d98a1f}td.c{font-weight:700}
+.mk{width:64px;text-align:center;padding:8px 2px;border-radius:8px}
+td.low,td.low input{background:#ff6b6b;color:#fff}
+th.sn,td.sn{position:sticky;right:0;z-index:3;min-width:38px}th.sn{z-index:4}
+th.nm2,td.nm2{position:sticky;right:38px;z-index:3;text-align:right;min-width:150px}th.nm2{z-index:4}td.nm2{box-shadow:-2px 0 4px rgba(0,0,0,.25)}
 </style>
 <link rel="manifest" href="manifest.json"><meta name="theme-color" content="#6c4bff"><link rel="apple-touch-icon" href="icon-192.png">
 </head>
@@ -57,17 +62,18 @@ const $=s=>document.querySelector(s);
 const esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const uid=()=>Math.random().toString(36).slice(2,9);
 const today=()=>new Date().toISOString().slice(0,10);
-const DEF=()=>({classes:[{id:'c1',name:'الصف الرابع',sections:[{id:'s1',name:'شعبة أ',students:[]},{id:'s2',name:'شعبة ب',students:[]}]}],att:{},gr:{},tt:{},lp:{},ev:{},evs:{},email:'',cur:{c:'c1',s:'s1'}});
+const DEF=()=>({classes:[{id:'c1',name:'الصف الرابع',sections:[{id:'s1',name:'شعبة أ',students:[]},{id:'s2',name:'شعبة ب',students:[]}]}],att:{},gr:{},tt:{},lp:{},ev:{},evs:{},mk:{},email:'',cur:{c:'c1',s:'s1'}});
 let S=DEF(),KEY='reg_v1',unsub=null;
 const SUBJ=['القراءة','القواعد','المحفوظات','التعبير','الإملاء'];
 const ALL=[...SUBJ,'الرياضيات','العلوم','التربية الإسلامية','الاجتماعيات','التربية الفنية','التربية الرياضية','الإنكليزية'];
 const MON=['تشرين الأول','تشرين الثاني','كانون الأول','كانون الثاني','شباط','آذار','نيسان','أيار'];
 const DAYS=['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
 let gs=SUBJ[0],gm=MON[0],rsAll=false,evSort='alpha';
-function ensure(){S.gr=S.gr||{};S.tt=S.tt||{};S.lp=S.lp||{};S.ev=S.ev||{};S.evs=S.evs||{}}
+function ensure(){S.gr=S.gr||{};S.tt=S.tt||{};S.lp=S.lp||{};S.ev=S.ev||{};S.evs=S.evs||{};S.mk=S.mk||{}}
 const LV=['ضعيف','مقبول','متوسط','جيد','جيد جدا','ممتاز'];
-let view='home',date=today(),adding=null,sync='⏳',ref=null,lastJson='',timer=null;
+let view='home',date=today(),adding=null,sync='⏳',ref=null,lastJson='',timer=null,pend=0;
 
+function syncText(){if(!navigator.onLine)return '📴 بدون إنترنت — محفوظ على الجهاز وسيُرفع عند عودة الاتصال';if(pend>0)return '⏳ جارٍ المزامنة…';return sync}
 function save(){
   const j=JSON.stringify(S),t=Date.now();lastJson=j;
   try{localStorage.setItem(KEY,j);localStorage.setItem(KEY+'_t',String(t))}catch(e){}
@@ -75,7 +81,7 @@ function save(){
   timer=setTimeout(async()=>{
     if(!ref)return;
     if(!navigator.onLine){sync='📴 بدون إنترنت — محفوظ على الجهاز وسيُرفع عند عودة الاتصال';if(view==='home')render()}
-    try{await ref.set({json:j,t});sync='✅ تمت المزامنة'}catch(e){sync='⚠️ تعذرت المزامنة'}
+    pend++;try{await ref.set({json:j,t});sync='✅ تمت المزامنة'}catch(e){sync='⚠️ تعذرت المزامنة'}pend=Math.max(0,pend-1);
     if(view==='home')render();
   },600);
 }
@@ -91,7 +97,7 @@ function render(){
   if(view==='home'){
     const c=cls();
     A.innerHTML=`<div class="hd">📒 سجل التلاميذ — أستاذ أحمد</div>
-    <div class="sub">${esc(sync)}</div>
+    <div class="sub">${esc(syncText())}</div>
     <div class="row">${S.classes.map(x=>`<button class="chip ${x.id===c.id?'on':''}" data-c="${x.id}">${esc(x.name)}</button>`).join('')}<button class="btn pri" id="addC">＋ إضافة صف</button></div>
     ${adding==='c'?`<div class="row"><input class="in" id="nm" placeholder="اسم الصف الجديد"><button class="btn pri" id="ok">حفظ</button></div>`:''}
     <div class="grid">${c.sections.map((s,i)=>`<button class="sec ${s.id===sec().id?'on':''}" data-s="${s.id}"><div style="font-size:30px">👥</div><div style="font-size:18px;font-weight:700">${esc(s.name)}</div><div class="note">${s.students.length} تلميذ · ${pct(s)}%</div></button>`).join('')}
@@ -141,7 +147,7 @@ function render(){
     <div class="row"><input class="in" id="nm" placeholder="اسم تلميذ جديد"><button class="btn" id="mic">🎤</button><button class="btn pri" id="add">إضافة</button></div>
     <textarea id="bulk" rows="3" placeholder="أو الصق عدة أسماء، كل اسم في سطر"></textarea>
     <div class="row"><button class="btn" id="addb">إضافة الأسماء</button></div>
-    ${evBlock(c,s)}`;
+    ${isUpper(c)?markBlock(c,s):evBlock(c,s)}`;
   }else if(view==='ev'){
     h=`${back}<div class="hd">⭐ التقييمات</div>${pick}${evBlock(c,s)}`;
   }else if(view==='gr'){
@@ -174,7 +180,7 @@ function render(){
     <div class="row"><button class="btn pri" id="dl">⬇️ حفظ نسخة</button><button class="btn" id="rs">⬆️ استعادة من ملف</button></div><input type="file" id="fl" accept=".json" hidden>
     <p class="note">بياناتك تُحفظ تلقائيًا في حسابك وتظهر على أي جهاز تفتح منه الرابط بنفس حساب Claude.</p>`;
   }else if(view==='set'){
-    h=`${back}<div class="hd">الإعدادات</div><label class="note">بريد Gmail (لإرسال النتائج)</label><input id="em" type="email" value="${esc(S.email||'')}" placeholder="name@gmail.com"><p class="note">${esc(sync)}</p><button class="btn" id="out">تسجيل الخروج</button>`;
+    h=`${back}<div class="hd">الإعدادات</div><label class="note">بريد Gmail (لإرسال النتائج)</label><input id="em" type="email" value="${esc(S.email||'')}" placeholder="name@gmail.com"><p class="note">${esc(syncText())}</p><button class="btn" id="out">تسجيل الخروج</button>`;
   }
   A.innerHTML=h;
   $('#back').onclick=()=>go('home');
@@ -198,6 +204,9 @@ function render(){
 }
 function bind2(s){
   const A=$('#app'),cid=cls().id;
+  A.querySelectorAll('input.mk').forEach(i=>i.oninput=()=>{const [sid,k,j]=i.dataset.k.split('|');S.mk[sid]=S.mk[sid]||{};const m=S.mk[sid];let v=i.value,n=num(v);if(n!=null&&n>100){v='100';i.value=v;n=100}if(n!=null&&n<0){v='0';i.value=v;n=0}
+    if(k==='mid'){if(v==='')delete m.mid;else m.mid=v}else{m[k]=m[k]||['','',''];m[k][+j]=v}
+    i.parentNode.classList.toggle('low',n!=null&&n<50);recalcRow(i.closest('tr'),sid);save()});
   A.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{S.cur.s=b.dataset.sc;save();render()});
   if($('#an'))$('#an').onclick=()=>{S.autoNext=(S.autoNext===false);save();render()};
   if($('#so'))$('#so').onclick=()=>{evSort=evSort==='alpha'?'top':'alpha';render()};
@@ -215,6 +224,25 @@ function bind2(s){
 }
 function secChips(c,s){
   return `<div class="row">${S.classes.length>1?`<select id="pc" style="width:auto">${S.classes.map(x=>`<option value="${x.id}" ${x.id===c.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`:''}${c.sections.map(x=>`<button class="chip ${x.id===s.id?'on':''}" data-sc="${x.id}" style="flex:1">${esc(x.name)}</button>`).join('')}</div>`;
+}
+const isUpper=c=>/الخامس|السادس|خامس|سادس/.test(c.name);
+const num=v=>{const x=parseFloat(String(v==null?'':v).replace(',','.'));return isNaN(x)?null:x};
+const fmt=x=>x==null?'':String(Math.round(x*10)/10);
+function calc(m){m=m||{};const av=l=>{l=(l||[]).map(num).filter(x=>x!=null);return l.length?l.reduce((x,y)=>x+y,0)/l.length:null};
+  const a1=av(m.a),a2=av(m.b),mid=num(m.mid),yr=(a1!=null&&a2!=null&&mid!=null)?(a1+mid+a2)/3:null;
+  return {a1,a2,yr,res:yr==null?'':(yr>=50?'ناجح':'راسب')}}
+function recalcRow(tr,sid){const r=calc(S.mk[sid]);const st=(k,v,low)=>{const c=tr.querySelector('[data-f="'+k+'"]');c.textContent=v;c.classList.toggle('low',!!low)};
+  st('a1',fmt(r.a1),r.a1!=null&&r.a1<50);st('a2',fmt(r.a2),r.a2!=null&&r.a2<50);st('yr',fmt(r.yr),r.yr!=null&&r.yr<50);st('res',r.res,r.res==='راسب')}
+function markBlock(c,s){
+  const list=[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar'));
+  const inp=(t,k,j,v)=>{const n=num(v);return `<td class="${n!=null&&n<50?'low':''}"><input class="mk" type="number" inputmode="decimal" min="0" max="100" step="any" data-k="${t.id}|${k}|${j}" value="${v==null?'':esc(v)}"></td>`};
+  const cc=(k,v,low)=>`<td class="c ${low?'low':''}" data-f="${k}">${v}</td>`;
+  const hd=(c1,a,b)=>`<th class="${c1}">${a}<br>${b}</th>`;
+  return `<input id="sq" placeholder="ابحث عن تلميذ..." style="margin-top:8px">
+    <div class="note" style="margin:6px 0">الدرجات من 100، والخلية الحمراء = أقل من 50، والمعدلات والنتيجة تُحسب تلقائيًا.</div>
+    <div class="tbl"><table><tr><th class="sn">م</th><th class="nm2">التلميذ</th>${[1,2,3].map(i=>hd('t1','ف1','امتحان '+i)).join('')}${hd('t1','معدل','الفصل 1')}${hd('t3','امتحان','نصف السنة')}${[1,2,3].map(i=>hd('t2','ف2','امتحان '+i)).join('')}${hd('t2','معدل','الفصل 2')}${hd('t3','السعي','السنوي')}${hd('t3','النتيجة','النهائية')}</tr>
+    ${list.map((t,i)=>{const m=S.mk[t.id]||{},r=calc(m);return `<tr data-n="${esc(t.name)}" data-sid="${t.id}"><td class="sn">${i+1}</td><td class="nm2"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> ${esc(t.name)}</td>${[0,1,2].map(j=>inp(t,'a',j,(m.a||[])[j])).join('')}${cc('a1',fmt(r.a1),r.a1!=null&&r.a1<50)}${inp(t,'mid',0,m.mid)}${[0,1,2].map(j=>inp(t,'b',j,(m.b||[])[j])).join('')}${cc('a2',fmt(r.a2),r.a2!=null&&r.a2<50)}${cc('yr',fmt(r.yr),r.yr!=null&&r.yr<50)}${cc('res',r.res,r.res==='راسب')}</tr>`}).join('')}</table></div>
+    ${list.length?'':'<p class="note">أضف التلاميذ أولًا من الخانات أعلاه.</p>'}`;
 }
 function evBlock(c,s){
   const subs=(S.evs[c.id]=S.evs[c.id]||[]);
@@ -253,22 +281,25 @@ window.attach=(uid,fs)=>{
   KEY='reg_v1_'+uid;S=DEF();lastJson='';
   try{const l=localStorage.getItem(KEY);if(l&&load(l))lastJson=l}catch(e){}
   ref={set:fs.set};sync=navigator.onLine?'⏳ جارٍ المزامنة…':'📴 بدون إنترنت — يعمل من النسخة المحفوظة';view='home';render();
-  unsub=fs.listen((exists,j,t)=>{
+  let first=true;
+  unsub=fs.listen((exists,j,t,fc)=>{
+    const prev=sync;let ch=false;
     const lt=+(localStorage.getItem(KEY+'_t')||0);
     if(exists){
       if(j&&j!==lastJson){
-        if(!localStorage.getItem(KEY)||(t||0)>=lt){if(load(j)){lastJson=j;try{localStorage.setItem(KEY,j);localStorage.setItem(KEY+'_t',String(t||0))}catch(e){}}}
+        if(!localStorage.getItem(KEY)||(t||0)>=lt){if(load(j)){lastJson=j;ch=true;try{localStorage.setItem(KEY,j);localStorage.setItem(KEY+'_t',String(t||0))}catch(e){}}}
         else save();
       }
-      sync='✅ تمت المزامنة';
+      sync=(fc&&first)?'⏳ جارٍ المزامنة…':'✅ تمت المزامنة';
     }else{sync='✅ متصل';save()}
-    render();
+    if(first||ch||sync!==prev)render();
+    first=false;
   },()=>{sync=navigator.onLine?'⚠️ تعذرت المزامنة':'📴 بدون إنترنت — يعمل من النسخة المحفوظة';render()});
 };
 window.detach=()=>{if(unsub)unsub();unsub=null;ref=null;S=DEF();lastJson='';};
 try{const lu=localStorage.getItem('reg_last_uid');if(lu){KEY='reg_v1_'+lu;const l=localStorage.getItem(KEY);if(l&&load(l)){lastJson=l;sync=navigator.onLine?'⏳ جارٍ المزامنة…':'📴 بدون إنترنت — يعمل من النسخة المحفوظة';render()}}}catch(e){}
-addEventListener('offline',()=>{sync='📴 بدون إنترنت — يُحفظ على الجهاز';const n=document.querySelector('.sub');if(n)n.textContent=sync});
-addEventListener('online',()=>{sync='✅ عاد الاتصال — جارٍ المزامنة';const n=document.querySelector('.sub');if(n)n.textContent=sync});
+addEventListener('offline',()=>{const n=document.querySelector('.sub');if(n)n.textContent=syncText()});
+addEventListener('online',()=>{sync='⏳ جارٍ المزامنة…';const n=document.querySelector('.sub');if(n)n.textContent=syncText()});
 </script>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
@@ -291,7 +322,7 @@ onAuthStateChanged(auth,u=>{
   $('#auth').classList.remove('on');
   try{localStorage.setItem('reg_last_uid',u.uid)}catch(e){}
   const r=doc(fdb,'users',u.uid);
-  window.attach(u.uid,{set:d=>setDoc(r,d),listen:(ok,bad)=>onSnapshot(r,s=>ok(s.exists(),s.exists()?s.data().json:null,s.exists()?s.data().t:0),bad)});
+  window.attach(u.uid,{set:d=>setDoc(r,d),listen:(ok,bad)=>onSnapshot(r,{includeMetadataChanges:true},s=>ok(s.exists(),s.exists()?s.data().json:null,s.exists()?s.data().t:0,s.metadata.fromCache),bad)});
 });
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
 </script>
