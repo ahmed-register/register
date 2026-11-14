@@ -69,6 +69,7 @@ const ALL=[...SUBJ,'الرياضيات','العلوم','التربية الإس�
 const MON=['تشرين الأول','تشرين الثاني','كانون الأول','كانون الثاني','شباط','آذار','نيسان','أيار'];
 const DAYS=['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس'];
 let gs=SUBJ[0],gm=MON[0],rsAll=false,evSort='alpha';
+let gq='';
 function ensure(){S.gr=S.gr||{};S.tt=S.tt||{};S.lp=S.lp||{};S.ev=S.ev||{};S.evs=S.evs||{};S.mk=S.mk||{};S.mks=S.mks||{}}
 let msub=null;
 const LV=['ضعيف','مقبول','متوسط','جيد','جيد جدا','ممتاز'];
@@ -91,6 +92,39 @@ function cls(){return S.classes.find(c=>c.id===S.cur.c)||S.classes[0]}
 function sec(){const c=cls();return c&&(c.sections.find(s=>s.id===S.cur.s)||c.sections[0])}
 function go(v){view=v;adding=null;render()}
 
+/* ===== البحث الشامل عن تلميذ (كل الصفوف والشعب) ===== */
+const norm=t=>String(t||'').toLowerCase().replace(/[\u064B-\u0652\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ة/g,'ه').replace(/ى/g,'ي').replace(/[^\u0621-\u064Aa-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+function gSearch(q){
+  const w=norm(q).split(' ').filter(Boolean);if(!w.length)return [];
+  const out=[];
+  S.classes.forEach(c=>c.sections.forEach(x=>x.students.forEach(t=>{const n=norm(t.name);if(w.every(k=>n.includes(k)))out.push({t,c,x})})));
+  return out;
+}
+function showGq(){
+  const box=$('#gqr');if(!box)return;
+  const q=gq.trim();
+  if(!q){box.innerHTML='';return}
+  const R=gSearch(q);
+  box.innerHTML=R.length
+    ?'<div class="note">'+R.length+' نتيجة — اضغط على التلميذ لفتح سجله</div>'+R.slice(0,30).map((r,i)=>`<button class="item" data-gi="${i}" style="width:100%;font:inherit;color:inherit;cursor:pointer;text-align:right"><b>${esc(r.t.name)}</b><span class="note">${esc(r.c.name)} — ${esc(r.x.name)}</span></button>`).join('')
+    :'<p class="note">لا يوجد تلميذ بهذا الاسم.</p>';
+  box.querySelectorAll('[data-gi]').forEach(b=>b.onclick=()=>{
+    const r=R[+b.dataset.gi];
+    S.cur={c:r.c.id,s:r.x.id};gq='';save();go('stu');
+    const i=$('#sq');if(i){i.value=r.t.name;i.dispatchEvent(new Event('input'))}
+  });
+}
+function gVoice(){
+  const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!R){alert('الميكروفون غير مدعوم هنا، استخدم Chrome');return}
+  const r=new R(),b=$('#gqm');r.lang='ar-SA';
+  r.onstart=()=>{if(b)b.textContent='🔴'};
+  r.onresult=e=>{gq=e.results[0][0].transcript;const i=$('#gq');if(i)i.value=gq;showGq()};
+  r.onerror=()=>alert('تعذر استخدام الميكروفون، تأكد من السماح له ومن اتصال الإنترنت');
+  r.onend=()=>{const x=$('#gqm');if(x)x.textContent='🎤'};
+  try{r.start()}catch(e){}
+}
+
 function pct(s){const k=date+'|'+s.id,a=S.att[k]||{};const n=s.students.length;if(!n)return 0;return Math.round(100*(n-Object.keys(a).length)/n)}
 
 function render(){
@@ -99,6 +133,8 @@ function render(){
     const c=cls();
     A.innerHTML=`<div class="hd">📒 سجل التلاميذ — أستاذ أحمد</div>
     <div class="sub">${esc(syncText())}</div>
+    <div class="row"><input class="in" id="gq" placeholder="🔍 ابحث عن تلميذ في كل الصفوف والشعب" value="${esc(gq)}"><button class="btn pri" id="gqm" title="بحث بالصوت">🎤</button></div>
+    <div id="gqr"></div>
     <div class="row">${S.classes.map(x=>`<button class="chip ${x.id===c.id?'on':''}" data-c="${x.id}">${esc(x.name)}</button>`).join('')}<button class="btn pri" id="addC">＋ إضافة صف</button></div>
     ${adding==='c'?`<div class="row"><input class="in" id="nm" placeholder="اسم الصف الجديد"><button class="btn pri" id="ok">حفظ</button></div>`:''}
     <div class="grid">${c.sections.map((s,i)=>`<button class="sec ${s.id===sec().id?'on':''}" data-s="${s.id}"><div style="font-size:30px">👥</div><div style="font-size:18px;font-weight:700">${esc(s.name)}</div><div class="note">${s.students.length} تلميذ · ${pct(s)}%</div></button>`).join('')}
@@ -120,6 +156,9 @@ function render(){
     A.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{S.cur.c=b.dataset.c;S.cur.s=cls().sections[0].id;save();render()});
     A.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{S.cur.s=b.dataset.s;save();render()});
     A.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>go(b.dataset.v));
+    $('#gq').oninput=e=>{gq=e.target.value;showGq()};
+    $('#gqm').onclick=gVoice;
+    showGq();
     $('#addC').onclick=()=>{adding='c';render();$('#nm').focus()};
     $('#rs').onclick=()=>{const sx=sec(),v=(prompt('اسم الشعبة الجديد',sx.name)||'').trim();if(!v||v===sx.name)return;if(c.sections.some(x=>x.name===v)){alert('هذه الشعبة موجودة');return}sx.name=v;save();render()};
     $('#ds').onclick=()=>{const sx=sec();if(c.sections.length<2){alert('لا يمكن حذف الشعبة الوحيدة في الصف');return}if(!confirm('حذف «'+sx.name+'» وكل بياناتها ('+sx.students.length+' تلميذ)؟ لا يمكن التراجع.'))return;dropSection(sx);c.sections=c.sections.filter(x=>x.id!==sx.id);S.cur.s=c.sections[0].id;save();render()};
