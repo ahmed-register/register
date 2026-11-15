@@ -125,12 +125,47 @@ function gVoice(){
   try{r.start()}catch(e){}
 }
 
+/* ===== التلاميذ الضعفاء (مقبول فما دون) ===== */
+const kOf=v=>v<50?1:v<60?2:v<70?3:v<80?4:v<90?5:6;
+function weakList(c,s){
+  const out=[];
+  if(isUpper(c)){
+    const subs=S.mks[c.id]||[];
+    s.students.forEach(t=>{
+      const items=[];
+      subs.forEach(b=>{
+        const m=((S.mk[t.id]||{})[b.id])||{},r=calc(m),mid=num(m.mid);
+        const vs=[r.a1,r.a2,mid].filter(x=>x!=null);
+        const v=r.yr!=null?r.yr:(vs.length?vs.reduce((x,y)=>x+y,0)/vs.length:null);
+        if(v!=null)items.push({n:b.name,txt:fmt(v)+' · '+LV[kOf(v)-1],k:kOf(v),v});
+      });
+      const w=items.filter(i=>i.k<=2);
+      if(w.length)out.push({t,items,w:w.length,sc:Math.min(...w.map(i=>i.v))});
+    });
+    out.sort((x,y)=>x.sc-y.sc||x.t.name.localeCompare(y.t.name,'ar'));
+  }else{
+    const subs=S.evs[c.id]||[];
+    s.students.forEach(t=>{
+      const items=[];
+      subs.forEach(b=>{const k=LV.indexOf(((S.ev[t.id]||{})[b.id])||'')+1;if(k>0)items.push({n:b.name,txt:LV[k-1],k,v:k})});
+      const w=items.filter(i=>i.k<=2);
+      if(w.length)out.push({t,items,w:w.length,sc:Math.min(...w.map(i=>i.k))});
+    });
+    out.sort((x,y)=>x.sc-y.sc||y.w-x.w||x.t.name.localeCompare(y.t.name,'ar'));
+  }
+  return out;
+}
+function weakText(c,s){
+  const W=weakList(c,s);if(!W.length)return '';
+  return 'التلاميذ الضعفاء — '+c.name+' — '+s.name+'\n'+W.map((r,i)=>(i+1)+'. '+r.t.name+' — '+r.items.filter(x=>x.k<=2).map(x=>x.n+': '+x.txt).join('، ')).join('\n')
+}
+
 function pct(s){const k=date+'|'+s.id,a=S.att[k]||{};const n=s.students.length;if(!n)return 0;return Math.round(100*(n-Object.keys(a).length)/n)}
 
 function render(){
   const A=$('#app');ensure();
   if(view==='home'){
-    const c=cls();
+    const c=cls(),wk=weakList(c,sec()).length;
     A.innerHTML=`<div class="hd">📒 سجل التلاميذ — أستاذ أحمد</div>
     <div class="sub">${esc(syncText())}</div>
     <div class="row"><input class="in" id="gq" placeholder="🔍 ابحث عن تلميذ في كل الصفوف والشعب" value="${esc(gq)}"><button class="btn pri" id="gqm" title="بحث بالصوت">🎤</button></div>
@@ -151,6 +186,7 @@ function render(){
       <button class="tile t2" data-v="lp"><b>📚</b>تحضير الدروس</button>
       <button class="tile t6" data-v="res"><b>📊</b>النتائج<small>ترتيب تلقائي</small></button>
       <button class="tile t7" data-v="bak"><b>💾</b>النسخة الاحتياطية<small>حفظ واستعادة</small></button>
+      <button class="tile t1" data-v="weak"><b>⚠️</b>التلاميذ الضعفاء<small>${wk} تلميذ — ${esc(sec().name)}</small></button>
       <button class="tile t8" data-v="set"><b>⚙️</b>الإعدادات</button>
     </div>`;
     A.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{S.cur.c=b.dataset.c;S.cur.s=cls().sections[0].id;save();render()});
@@ -215,6 +251,16 @@ function render(){
     ${any?'':'<p class="note">لم تُدخل تقييمات بعد، أضف المواد والتقييمات من زر ⭐ التقييمات.</p>'}
     ${R.map((r,i)=>{const has=r.avg>0,k=Math.max(1,Math.round(r.avg)),pc=Math.round(r.avg/6*100);const top=has&&i<10;const bg=has&&i<3?'background:linear-gradient(135deg,#ffd35c,#ffeea3);color:#1c2233;border-color:#e0a800':top?'background:linear-gradient(135deg,#d6e8ff,#eef5ff);color:#1c2233;border-color:#5aa9ff':'';const mk=!has?'—':i<3?['🥇','🥈','🥉'][i]:i<10?'🏆':(i+1)+'.';return `<div class="item" style="${bg}"><span>${mk} ${top?'<small>('+(i+1)+')</small> ':''}<b>${esc(r.t.name)}</b>${rsAll?`<div class="note" style="color:inherit;opacity:.7">${esc(r.sn)}</div>`:''}</span><span style="text-align:center;min-width:70px"><b style="font-size:20px">${has?pc+'%':'—'}</b><div class="note" style="color:inherit;opacity:.75">${has?LV[k-1]:'بدون تقييم'}</div></span></div>${i===9&&R.length>10?'<div class="note" style="text-align:center">— باقي التلاميذ —</div>':''}`}).join('')}
     <div class="row"><button class="btn pri" id="cp">📋 نسخ</button><button class="btn" id="ml">📤 إرسال بالبريد</button><button class="btn" id="wa">🟢 واتساب</button></div>`;
+  }else if(view==='weak'){
+    const W=weakList(c,s),up=isUpper(c);
+    const noData=up?!(S.mks[c.id]||[]).length:!(S.evs[c.id]||[]).length;
+    h=`${back}<div class="hd">⚠️ التلاميذ الضعفاء</div>${secChips(c,s)}
+    <div class="note">${up?'الدرجات: يظهر التلميذ إذا كان معدل أي مادة أقل من 60 (مقبول فما دون).':'التقييمات: يظهر التلميذ إذا كان تقييمه في أي مادة مقبول أو ضعيف.'}</div>
+    <div class="grid" style="margin:10px 0"><div class="stat"><b>${W.length}</b><span>ضعفاء في ${esc(s.name)}</span></div><div class="stat"><b>${s.students.length}</b><span>تلاميذ ${esc(s.name)}</span></div></div>
+    ${noData?`<p class="note">${up?'لم تُدخل درجات بعد. أضف المواد والدرجات من «سجل التلاميذ».':'لم تُدخل تقييمات بعد. أضف المواد والتقييمات من «⭐ التقييمات».'}</p>`:''}
+    ${W.map((r,i)=>`<div class="item" style="flex-direction:column;align-items:stretch;border-inline-start-color:${r.sc<=1||(up&&r.sc<50)?'#ff6b6b':'#ffc55c'}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${i+1}. ${esc(r.t.name)}</b><span class="note">${r.w} ${r.w>2?'مواد':'مادة'} ضعيفة</span></div><div class="row" style="margin:8px 0 0">${r.items.map(x=>`<span class="lvsel l${x.k}" style="min-width:0;padding:6px 10px;font-size:13px;cursor:default">${esc(x.n)}: ${esc(x.txt)}</span>`).join('')}</div></div>`).join('')}
+    ${!W.length&&!noData?'<p class="note">🎉 لا يوجد تلاميذ بمستوى مقبول فما دون في هذه الشعبة.</p>':''}
+    ${W.length?'<div class="row"><button class="btn pri" id="wcp">📋 نسخ</button><button class="btn" id="wwa">🟢 واتساب</button></div>':''}`;
   }else if(view==='bak'){
     h=`${back}<div class="hd">النسخة الاحتياطية</div>
     <div class="row"><button class="btn pri" id="dl">⬇️ حفظ نسخة</button><button class="btn" id="rs">⬆️ استعادة من ملف</button></div><input type="file" id="fl" accept=".json" hidden>
@@ -232,6 +278,8 @@ function render(){
   if($('#add'))$('#add').onclick=()=>{if(addOne($('#nm').value))save();render()};
   if($('#addb'))$('#addb').onclick=()=>{let n=0;$('#bulk').value.split('\n').forEach(l=>n+=addOne(l));if(n)save();render()};
   if($('#mic'))$('#mic').onclick=()=>{const R=window.SpeechRecognition||window.webkitSpeechRecognition;if(!R){alert('الميكروفون غير مدعوم هنا');return}const r=new R();r.lang='ar-SA';r.onresult=e=>{$('#nm').value=e.results[0][0].transcript};r.onerror=()=>alert('تعذر استخدام الميكروفون');try{r.start()}catch(e){}};
+  if($('#wcp'))$('#wcp').onclick=async()=>{try{await navigator.clipboard.writeText(weakText(c,s));alert('تم النسخ')}catch(e){alert('تعذر النسخ، استخدم زر واتساب')}};
+  if($('#wwa'))$('#wwa').onclick=()=>{location.href='https://wa.me/?text='+encodeURIComponent(weakText(c,s))};
   if($('#cp'))$('#cp').onclick=async()=>{try{await navigator.clipboard.writeText(resText(s));alert('تم النسخ')}catch(e){alert('تعذر النسخ، استخدم زر واتساب أو البريد')}};
   if($('#ml'))$('#ml').onclick=()=>{location.href='mailto:'+(S.email||'')+'?subject='+encodeURIComponent('نتائج '+s.name)+'&body='+encodeURIComponent(resText(s))};
   if($('#wa'))$('#wa').onclick=()=>{location.href='https://wa.me/?text='+encodeURIComponent(resText(s))};
