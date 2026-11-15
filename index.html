@@ -125,39 +125,35 @@ function gVoice(){
   try{r.start()}catch(e){}
 }
 
-/* ===== التلاميذ الضعفاء (مقبول فما دون) ===== */
+/* ===== التلاميذ الضعفاء: المستوى النهائي مقبول فما دون ===== */
 const kOf=v=>v<50?1:v<60?2:v<70?3:v<80?4:v<90?5:6;
 function weakList(c,s){
-  const out=[];
-  if(isUpper(c)){
-    const subs=S.mks[c.id]||[];
-    s.students.forEach(t=>{
-      const items=[];
-      subs.forEach(b=>{
+  const out=[],up=isUpper(c);
+  const subs=up?(S.mks[c.id]||[]):(S.evs[c.id]||[]);
+  s.students.forEach(t=>{
+    const items=[];
+    subs.forEach(b=>{
+      if(up){
         const m=((S.mk[t.id]||{})[b.id])||{},r=calc(m),mid=num(m.mid);
         const vs=[r.a1,r.a2,mid].filter(x=>x!=null);
         const v=r.yr!=null?r.yr:(vs.length?vs.reduce((x,y)=>x+y,0)/vs.length:null);
         if(v!=null)items.push({n:b.name,txt:fmt(v)+' · '+LV[kOf(v)-1],k:kOf(v),v});
-      });
-      const w=items.filter(i=>i.k<=2);
-      if(w.length)out.push({t,items,w:w.length,sc:Math.min(...w.map(i=>i.v))});
+      }else{
+        const k=LV.indexOf(((S.ev[t.id]||{})[b.id])||'')+1;
+        if(k>0)items.push({n:b.name,txt:LV[k-1],k,v:k});
+      }
     });
-    out.sort((x,y)=>x.sc-y.sc||x.t.name.localeCompare(y.t.name,'ar'));
-  }else{
-    const subs=S.evs[c.id]||[];
-    s.students.forEach(t=>{
-      const items=[];
-      subs.forEach(b=>{const k=LV.indexOf(((S.ev[t.id]||{})[b.id])||'')+1;if(k>0)items.push({n:b.name,txt:LV[k-1],k,v:k})});
-      const w=items.filter(i=>i.k<=2);
-      if(w.length)out.push({t,items,w:w.length,sc:Math.min(...w.map(i=>i.k))});
-    });
-    out.sort((x,y)=>x.sc-y.sc||y.w-x.w||x.t.name.localeCompare(y.t.name,'ar'));
-  }
+    if(!items.length)return;
+    const avg=items.reduce((x,y)=>x+y.v,0)/items.length;
+    const fk=up?kOf(avg):Math.max(1,Math.round(avg));
+    if(fk<=2)out.push({t,items,avg,fk,fv:up?fmt(avg):Math.round(avg/6*100)+'%'});
+  });
+  out.sort((x,y)=>x.avg-y.avg||x.t.name.localeCompare(y.t.name,'ar'));
   return out;
 }
 function weakText(c,s){
   const W=weakList(c,s);if(!W.length)return '';
-  return 'التلاميذ الضعفاء — '+c.name+' — '+s.name+'\n'+W.map((r,i)=>(i+1)+'. '+r.t.name+' — '+r.items.filter(x=>x.k<=2).map(x=>x.n+': '+x.txt).join('، ')).join('\n')
+  return 'التلاميذ الضعفاء — '+c.name+' — '+s.name+'\n'+W.map((r,i)=>(i+1)+'. '+r.t.name+' — النهائي: '+LV[r.fk-1]+' ('+r.fv+')').join('\n')
 }
 
 function pct(s){const k=date+'|'+s.id,a=S.att[k]||{};const n=s.students.length;if(!n)return 0;return Math.round(100*(n-Object.keys(a).length)/n)}
@@ -255,10 +251,10 @@ function render(){
     const W=weakList(c,s),up=isUpper(c);
     const noData=up?!(S.mks[c.id]||[]).length:!(S.evs[c.id]||[]).length;
     h=`${back}<div class="hd">⚠️ التلاميذ الضعفاء</div>${secChips(c,s)}
-    <div class="note">${up?'الدرجات: يظهر التلميذ إذا كان معدل أي مادة أقل من 60 (مقبول فما دون).':'التقييمات: يظهر التلميذ إذا كان تقييمه في أي مادة مقبول أو ضعيف.'}</div>
+    <div class="note">${up?'الدرجات: يظهر التلميذ إذا كان معدله النهائي (متوسط معدلات مواده) أقل من 60، أي مقبول فما دون.':'التقييمات: يظهر التلميذ إذا كان مستواه النهائي (معدل تقييمات مواده) مقبول أو ضعيف.'}</div>
     <div class="grid" style="margin:10px 0"><div class="stat"><b>${W.length}</b><span>ضعفاء في ${esc(s.name)}</span></div><div class="stat"><b>${s.students.length}</b><span>تلاميذ ${esc(s.name)}</span></div></div>
     ${noData?`<p class="note">${up?'لم تُدخل درجات بعد. أضف المواد والدرجات من «سجل التلاميذ».':'لم تُدخل تقييمات بعد. أضف المواد والتقييمات من «⭐ التقييمات».'}</p>`:''}
-    ${W.map((r,i)=>`<div class="item" style="flex-direction:column;align-items:stretch;border-inline-start-color:${r.sc<=1||(up&&r.sc<50)?'#ff6b6b':'#ffc55c'}"><div style="display:flex;justify-content:space-between;gap:8px"><b>${i+1}. ${esc(r.t.name)}</b><span class="note">${r.w} ${r.w>2?'مواد':'مادة'} ضعيفة</span></div><div class="row" style="margin:8px 0 0">${r.items.map(x=>`<span class="lvsel l${x.k}" style="min-width:0;padding:6px 10px;font-size:13px;cursor:default">${esc(x.n)}: ${esc(x.txt)}</span>`).join('')}</div></div>`).join('')}
+    ${W.map((r,i)=>`<div class="item" style="flex-direction:column;align-items:stretch;border-inline-start-color:${r.fk===1?'#ff6b6b':'#ffc55c'}"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><b>${i+1}. ${esc(r.t.name)}</b><span class="lvsel l${r.fk}" style="min-width:0;padding:6px 12px;font-weight:700;cursor:default">النهائي: ${LV[r.fk-1]} (${esc(r.fv)})</span></div><div class="row" style="margin:8px 0 0">${r.items.map(x=>`<span class="lvsel l${x.k}" style="min-width:0;padding:6px 10px;font-size:13px;cursor:default">${esc(x.n)}: ${esc(x.txt)}</span>`).join('')}</div></div>`).join('')}
     ${!W.length&&!noData?'<p class="note">🎉 لا يوجد تلاميذ بمستوى مقبول فما دون في هذه الشعبة.</p>':''}
     ${W.length?'<div class="row"><button class="btn pri" id="wcp">📋 نسخ</button><button class="btn" id="wwa">🟢 واتساب</button></div>':''}`;
   }else if(view==='bak'){
