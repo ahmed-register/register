@@ -292,6 +292,15 @@ function bind2(s){
     if(k==='mid'){if(v==='')delete m.mid;else m.mid=v}else{m[k]=m[k]||['','',''];m[k][+j]=v}
     i.parentNode.classList.toggle('low',n!=null&&n<50);recalcRow(i.closest('tr'),sid,sm);save();if(S.autoNext!==false&&n!=null&&!v.includes('.')&&((v.length===2&&v!=='10')||v.length>=3))nextMk(i)});
   A.querySelectorAll('input.mk').forEach(i=>i.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();nextMk(i)}});
+  A.querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{
+    const c=cls(),tid=b.dataset.mv,st=s.students.find(t=>t.id===tid);if(!st)return;
+    const others=c.sections.filter(x=>x.id!==s.id);
+    if(!others.length){alert('لا توجد شعبة أخرى في هذا الصف');return}
+    let to=others[0];
+    if(others.length>1){const n=prompt('نقل «'+st.name+'» إلى أي شعبة؟ اكتب الرقم:\n'+others.map((x,i)=>(i+1)+'. '+x.name).join('\n'),'1');const k=parseInt(n,10);if(!(k>=1&&k<=others.length))return;to=others[k-1]}
+    if(!confirm('نقل «'+st.name+'» من «'+s.name+'» إلى «'+to.name+'»؟\nتنتقل معه كل تقييماته ودرجاته وغيابه.'))return;
+    moveStudent(tid,s,to);save();render();
+  });
   A.querySelectorAll('[data-sc]').forEach(b=>b.onclick=()=>{S.cur.s=b.dataset.sc;save();render()});
   if($('#an'))$('#an').onclick=()=>{S.autoNext=(S.autoNext===false);save();render()};
   if($('#so'))$('#so').onclick=()=>{evSort=evSort==='alpha'?'top':'alpha';render()};
@@ -314,6 +323,13 @@ function bind2(s){
   A.querySelectorAll('[data-tt]').forEach(x=>x.oninput=()=>{const [d,k]=x.dataset.tt.split('|');S.tt[s.id]=S.tt[s.id]||{};const t=S.tt[s.id];t[d]=t[d]||['','','','','',''];t[d][k]=x.value;save()});
   if($('#lpa'))$('#lpa').onclick=()=>{const t=$('#lpt').value.trim();if(!t)return;S.lp[s.id]=S.lp[s.id]||[];S.lp[s.id].unshift({id:uid(),d:$('#lpd').value,s:$('#lps').value,t,n:$('#lpn').value.trim()});save();render()};
   A.querySelectorAll('[data-lp]').forEach(b=>b.onclick=()=>{if(confirm('حذف السجل؟')){S.lp[s.id]=S.lp[s.id].filter(x=>x.id!==b.dataset.lp);save();render()}});
+}
+function moveStudent(tid,fr,to){
+  const i=fr.students.findIndex(t=>t.id===tid);if(i<0)return;
+  const st=fr.students.splice(i,1)[0];to.students.push(st);
+  const g=S.gr[fr.id];
+  if(g){S.gr[to.id]=S.gr[to.id]||{};Object.keys(g).forEach(sb=>Object.keys(g[sb]||{}).forEach(mn=>{const o=g[sb][mn];if(o&&o[tid]!==undefined){const d=S.gr[to.id];d[sb]=d[sb]||{};d[sb][mn]=d[sb][mn]||{};d[sb][mn][tid]=o[tid];delete o[tid]}}))}
+  Object.keys(S.att).forEach(k=>{if(k.endsWith('|'+fr.id)&&S.att[k][tid]){const nk=k.slice(0,-fr.id.length)+to.id;S.att[nk]=S.att[nk]||{};S.att[nk][tid]=1;delete S.att[k][tid]}});
 }
 function secChips(c,s){
   return `<div class="row">${S.classes.length>1?`<select id="pc" style="width:auto">${S.classes.map(x=>`<option value="${x.id}" ${x.id===c.id?'selected':''}>${esc(x.name)}</option>`).join('')}</select>`:''}${c.sections.map(x=>`<button class="chip ${x.id===s.id?'on':''}" data-sc="${x.id}" style="flex:1">${esc(x.name)}</button>`).join('')}</div>`;
@@ -346,7 +362,7 @@ function markBlock(c,s){
     <div class="note" style="margin:6px 0">الدرجات من 100، والخلية الحمراء = أقل من 50، والمعدلات والنتيجة تُحسب تلقائيًا. عند كتابة رقمين (أو 100) تنتقل الخانة للتلميذ التالي، وللأرقام الأخرى اضغط «التالي» في لوحة المفاتيح.</div>
     <div class="row"><button class="btn" id="an">الانتقال التلقائي بين التلاميذ: ${S.autoNext===false?'متوقف':'مفعّل'}</button></div>
     <div class="tbl"><table><tr><th class="sn">م</th><th class="nm2">التلميذ</th>${[1,2,3].map(i=>hd('t1','ف1','امتحان '+i)).join('')}${hd('t1','معدل','الفصل 1')}${hd('t3','امتحان','نصف السنة')}${[1,2,3].map(i=>hd('t2','ف2','امتحان '+i)).join('')}${hd('t2','معدل','الفصل 2')}${hd('t3','السعي','السنوي')}${hd('t3','النتيجة','النهائية')}</tr>
-    ${list.map((t,i)=>{const m=((S.mk[t.id]||{})[sub.id])||{},r=calc(m);return `<tr data-n="${esc(t.name)}" data-sid="${t.id}"><td class="sn">${i+1}</td><td class="nm2"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> ${esc(t.name)}</td>${[0,1,2].map(j=>inp(t,'a',j,(m.a||[])[j])).join('')}${cc('a1',fmt(r.a1),r.a1!=null&&r.a1<50)}${inp(t,'mid',0,m.mid)}${[0,1,2].map(j=>inp(t,'b',j,(m.b||[])[j])).join('')}${cc('a2',fmt(r.a2),r.a2!=null&&r.a2<50)}${cc('yr',fmt(r.yr),r.yr!=null&&r.yr<50)}${cc('res',r.res,r.res==='راسب')}</tr>`}).join('')}</table></div>
+    ${list.map((t,i)=>{const m=((S.mk[t.id]||{})[sub.id])||{},r=calc(m);return `<tr data-n="${esc(t.name)}" data-sid="${t.id}"><td class="sn">${i+1}</td><td class="nm2"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> <button class="x" data-mv="${t.id}" title="نقل لشعبة أخرى" style="width:26px;height:26px">⇄</button> ${esc(t.name)}</td>${[0,1,2].map(j=>inp(t,'a',j,(m.a||[])[j])).join('')}${cc('a1',fmt(r.a1),r.a1!=null&&r.a1<50)}${inp(t,'mid',0,m.mid)}${[0,1,2].map(j=>inp(t,'b',j,(m.b||[])[j])).join('')}${cc('a2',fmt(r.a2),r.a2!=null&&r.a2<50)}${cc('yr',fmt(r.yr),r.yr!=null&&r.yr<50)}${cc('res',r.res,r.res==='راسب')}</tr>`}).join('')}</table></div>
     ${list.length?'':'<p class="note">أضف التلاميذ أولًا من الخانات أعلاه.</p>'}`;
 }
 function evBlock(c,s,noAdd){
@@ -363,7 +379,7 @@ function evBlock(c,s,noAdd){
     <div class="row"><input class="in" id="sq" placeholder="ابحث عن تلميذ..."><button class="btn" id="sqm">🎤</button><button class="btn" id="so">الترتيب: ${evSort==='top'?'الأعلى':'أبجدي'}</button></div>
     <div class="row"><button class="btn" id="an">الانتقال التلقائي للتلميذ التالي: ${S.autoNext===false?'متوقف':'مفعّل'}</button></div>
     <div class="tbl"><table><tr><th class="nm">التلميذ</th>${subs.map(b=>`<th>${esc(b.name)} <button class="x" data-ds="${b.id}" style="width:26px;height:26px">✕</button></th>`).join('')}</tr>
-    ${list.map((t,i)=>`<tr data-n="${esc(t.name)}" data-sid="${t.id}"><td class="nm"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> ${i+1}. ${esc(t.name)}${avgOf(t)>0&&avgOf(t)===mx?'<div><span style="background:#2fbf71;color:#fff;border-radius:12px;padding:2px 10px;font-size:12px">الأعلى 🏆</span></div>':''}</td>${subs.map(b=>{const v=((S.ev[t.id]||{})[b.id])||'';return `<td><button class="lvsel l${LV.indexOf(v)+1}" data-c="${t.id}|${b.id}">${v||'—'}</button></td>`}).join('')}</tr>`).join('')}</table></div>
+    ${list.map((t,i)=>`<tr data-n="${esc(t.name)}" data-sid="${t.id}"><td class="nm"><button class="x" data-d="${t.id}" style="width:26px;height:26px;color:#ff6b6b">✕</button> <button class="x" data-mv="${t.id}" title="نقل لشعبة أخرى" style="width:26px;height:26px">⇄</button> ${i+1}. ${esc(t.name)}${avgOf(t)>0&&avgOf(t)===mx?'<div><span style="background:#2fbf71;color:#fff;border-radius:12px;padding:2px 10px;font-size:12px">الأعلى 🏆</span></div>':''}</td>${subs.map(b=>{const v=((S.ev[t.id]||{})[b.id])||'';return `<td><button class="lvsel l${LV.indexOf(v)+1}" data-c="${t.id}|${b.id}">${v||'—'}</button></td>`}).join('')}</tr>`).join('')}</table></div>
     ${subs.length?'':'<p class="note">اضغط «＋ مادة» لإضافة عمود مادة، ثم اختر التقييم لكل تلميذ.</p>'}`;
 }
 function dropSection(sx){sx.students.forEach(t=>delete S.ev[t.id]);Object.keys(S.att).forEach(k=>{if(k.endsWith('|'+sx.id))delete S.att[k]});delete S.gr[sx.id];delete S.tt[sx.id];delete S.lp[sx.id]}
