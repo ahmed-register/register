@@ -152,6 +152,7 @@ const GDATA=[{"name":"حروف التهجي العربية","items":[{"t":"تد�
 const GB={def:6,topics:[],q:{}};let gid=0;
 GDATA.forEach((tp,i)=>{const ids=[];tp.items.forEach(it=>{gid++;ids.push(gid);GB.q[gid]={l:it.t+' — '+tp.name,q:it.q}});GB.topics.push({id:i+1,name:tp.name,n:ids})});
 BANK['الصف الرابع|القواعد']=GB;
+GB.shared=true;
 let qg={key:null,cn:null,topics:new Set(),cnt:3,ans:false};
 const sh=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const item=(B,n)=>{const it=B.q[n];return it.parts?{parts:it.parts,a:null}:{parts:[{t:it.l||'',x:[it.q]}],a:it.a,l:it.l}};
@@ -164,6 +165,7 @@ function pick(B,s){
   return per;
 }
 function qText(B,s,r){
+  if(r.shared)return 'أسئلة '+cls().name+' — '+qg.key.split('|')[1]+'\n\n'+r.shared.map((n,j)=>{const it=item(B,n);return (j+1)+') '+it.l+'\n   '+it.parts[0].x[0].split('\n').join('\n   ')}).join('\n\n');
   const sorted=[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar'));
   return 'أسئلة '+s.name+'\n\n'+sorted.map((t,i)=>(i+1)+'. '+t.name+'\n'+(r.per[t.id]||[]).map((n,j)=>{const it=item(B,n);
     return (it.l?['   '+(j+1)+') '+it.l+'\n      '+it.parts[0].x[0].split('\n').join('\n      ')]:it.parts.map(p=>'   '+(p.t?p.t+': ':(j+1)+') ')+p.x.join(' — '))).join('\n')+(qg.ans&&it.a?'\n      ← '+it.a:'')}).join(B.card?'\n   ───\n':'\n')).join('\n\n');
@@ -183,9 +185,9 @@ function showQ(){
   <div class="row"><select id="qk">${keys.map(k=>`<option value="${esc(k)}" ${k===qg.key?'selected':''}>${esc(k.replace('|',' — '))}</option>`).join('')}</select></div>
   <div class="row"><b>${B.card?'اختر الدروس:':'اختر المواضيع:'}</b><button class="btn" id="qall">✔ الكل</button></div>
   <div class="row">${B.topics.map(t=>`<button class="chip ${qg.topics.has(t.id)?'on':''}" data-qt="${t.id}">${esc(t.name)}${B.card?'':' ('+t.n.length+')'}</button>`).join('')}</div>
-  <div class="row"><span class="note">${B.card?'عدد البطاقات لكل تلميذ (كل بطاقة: قراءة + محادثة + محفوظة)':'عدد الأسئلة لكل تلميذ'}</span><input type="number" id="qc" min="1" max="10" value="${qg.cnt}" style="width:80px"></div>
-  <div class="row"><button class="btn pri" id="qgo">🎲 اختر الأسئلة</button>${r?`${B.card?'':`<button class="btn" id="qa">${qg.ans?'إخفاء الأجوبة':'إظهار الأجوبة'}</button>`}<button class="btn" id="qcp">📋 نسخ</button>`:''}</div>
-  ${r?[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar')).map((t,i)=>`<div class="item" style="flex-direction:column;align-items:stretch"><b>${i+1}. ${esc(t.name)}</b>${(r.per[t.id]||[]).map((n,j)=>qHtml(B,n,j)).join('')}</div>`).join(''):'<p class="note">اختر موضوعاً أو أكثر ثم اضغط «اختر الأسئلة» فيأخذ كل تلميذ أسئلة مختلفة.</p>'}`;
+  <div class="row"><span class="note">${B.card?'عدد البطاقات لكل تلميذ (كل بطاقة: قراءة + محادثة + محفوظة)':B.shared?'عدد الأسئلة للصف كله (الأسئلة نفسها لكل التلاميذ)':'عدد الأسئلة لكل تلميذ'}</span><input type="number" id="qc" min="1" max="10" value="${qg.cnt}" style="width:80px"></div>
+  <div class="row"><button class="btn pri" id="qgo">🎲 اختر الأسئلة</button>${r?`${B.card||B.shared?'':`<button class="btn" id="qa">${qg.ans?'إخفاء الأجوبة':'إظهار الأجوبة'}</button>`}<button class="btn" id="qcp">📋 نسخ</button>`:''}</div>
+  ${r&&r.shared?`<div class="note" style="margin-top:8px">الأسئلة نفسها لكل تلاميذ ${esc(c.name)} (${c.sections.map(x=>esc(x.name)).join(' و ')})</div>`+r.shared.map((n,j)=>`<div class="item" style="flex-direction:column;align-items:stretch">${qHtml(B,n,j)}</div>`).join(''):r?[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar')).map((t,i)=>`<div class="item" style="flex-direction:column;align-items:stretch"><b>${i+1}. ${esc(t.name)}</b>${(r.per[t.id]||[]).map((n,j)=>qHtml(B,n,j)).join('')}</div>`).join(''):'<p class="note">اختر موضوعاً أو أكثر ثم اضغط «اختر الأسئلة» فيأخذ كل تلميذ أسئلة مختلفة.</p>'}`;
   A.querySelector('#qb').onclick=()=>go('home');
   A.querySelector('#qk').onchange=e=>{qg.key=e.target.value;qg.topics=new Set();qg.cnt=BANK[qg.key].def||3;showQ()};
   A.querySelector('#qall').onclick=()=>{qg.topics=qg.topics.size===B.topics.length?new Set():new Set(B.topics.map(t=>t.id));showQ()};
@@ -193,6 +195,8 @@ function showQ(){
   A.querySelector('#qc').onchange=e=>{qg.cnt=Math.max(1,Math.min(10,+e.target.value||1))};
   A.querySelector('#qgo').onclick=()=>{
     if(!qg.topics.size){alert('اختر درساً أو موضوعاً واحداً على الأقل');return}
+    if(B.shared){const pool=[...new Set([].concat(...B.topics.filter(t=>qg.topics.has(t.id)).map(t=>t.n)))],ids=sh(pool).slice(0,qg.cnt);
+      c.sections.forEach(x=>{S.qgen[x.id]={key:qg.key,shared:ids,date:today()}});save();showQ();return}
     if(!s.students.length){alert('لا يوجد تلاميذ في هذه الشعبة');return}
     S.qgen[s.id]={key:qg.key,per:pick(B,s),date:today()};save();showQ()};
   if(r){if(A.querySelector('#qa'))A.querySelector('#qa').onclick=()=>{qg.ans=!qg.ans;showQ()};
