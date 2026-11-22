@@ -115,8 +115,40 @@ const BANK={'الصف الثالث|العلوم':{
  q:{}}};
 RAW.split('\n').forEach(l=>{const p=l.split('|');BANK['الصف الثالث|العلوم'].q[+p[0]]={q:p[1],a:p[2]}});
 window.QBANK=BANK;
-let qg={key:null,topics:new Set(),cnt:3,ans:false};
+const RDATA=`من هدى القرآن الكريم|5|لماذا يأمرنا الله سبحانه وتعالى بهذه الآية؟~ما معنى «اخفض لهما جناح الذل»؟|محبة الوالدين
+من الحديث الشريف (العمل)|7|لماذا طلب الرجل من النبي أن يساعده؟~كيف عرف الرجل لذة العمل؟|الممرضة
+لماذا نحب المدرسة؟|9|هل تحب مدرستك؟ لماذا؟~ما اسم مدرستك؟|أمي
+حكاية من الحج|14|لماذا رجع الرجل إلى زوجته فرحاً؟~ماذا قالت الزوجة للرجل عندما أخبرها بالنقود؟~ما الهدف الذي نتعلمه من هذه القصة؟|نرجسة
+الراعي والذئاب|20|لماذا لا يقع الجدار؟ كيف يبني الإنسان نفسه؟~ما معنى «البناء يحتاج إلى الحجر الصغير كاحتياجه إلى الحجر الكبير»؟|محبة الوالدين
+لماذا لا يقع الجدار؟|23|لماذا غضب أهل القرية على الراعي؟~ما الهدف الذي نتعلمه من هذه القصة؟|أمي
+الحمل والذيب|26|ما الهدف الذي نتعلمه من هذا الدرس؟~ما معنى «عكّرت الماء»؟|محبة الوالدين
+الشقيقان|31|بماذا فكّر يوسف لإعانة أخيه؟~ما رأيك في هذين الأخوين؟|أمي
+من مآثر أجدادنا|37|ما الذي جعل الإمام الحسن يحرّر الغلام؟~ما معنى «إغاثة الملهوف»؟|الممرضة
+الوقاية خير من العلاج|42|لماذا يأكل الإنسان؟ ما المقصود بتنوع الغذاء؟~ما معنى «بيت الداء»؟|البلبل والحرية
+مثل في حكاية|51|ما العبرة التي نأخذها من هذه القصة؟~ما معنى «لقد أُكلت يوم أُكل الثور الأبيض»؟|الفلاح
+القوة في الوحدة|55|لماذا لم يستطع أي من الأبناء كسر حزمة السهام؟~ما العبرة التي نأخذها من هذه الحكاية؟|محبة الوالدين
+الحمامة والثعلب|61|لماذا سكنت الحمامة وأفرادها أعلى الشجرة؟~ما الخطأ الذي وقعت فيه الحمامة أمام الثعلب؟|نرجسة
+الكنز الثمين|68|لماذا هاجر الأبناء إلى المدينة؟~لماذا سُمّيت الأرض بالكنز الثمين؟|الممرضة
+بين الفصول الأربعة|74|ما الفصول الأربعة؟ بماذا افتخر فصل الربيع؟~ما معنى كلمة «خبايا»؟ وما معنى كلمة «يعرب»؟|أمي
+الترشيد في حياتنا|82|ماذا يحدث لو مددتَ يدك إلى أموال غيرك؟~ماذا تفعل إذا أغناك الله؟~ما معنى «مرّن يدك على الأعمال الحرة»؟|محبة الوالدين
+الدواء في الغذاء|85|ماذا نجد في الفواكه والخضروات؟~أين نجد غذاء الإيمان؟|أمي
+من كرم العرب|92|بماذا اشتهر حاتم الطائي؟~ما معنى «ذاع صيته»؟|الممرضة
+القمر|101|ماذا نسمي القمر في أول شهر؟~ما الشهور القمرية؟|البلبل والحرية
+حكى لنا جدي|106|ماذا فعل الرجلان من خير لأهل المدينة؟~من هو خير الناس؟|الفلاح
+جولة في بلادنا الجميلة|111|ماذا يعني «لم نجد فرقاً بين عراقي وآخر»؟~ما معنى «أفراحهم واحدة وأحزانهم واحدة»؟|محبة الوالدين
+أشجار في بلادي|115|اذكر الأماكن التي تتكاثر فيها أشجار النخيل~ما معنى كل من كلمة «راسخة» و«شام»؟|نرجسة
+الخليفة والفتى الصغير|123|بماذا أجاب الفتى الخليفة؟~لماذا سُرّ الخليفة بالفتى؟|الممرضة
+الفلاح الحكيم|126|ماذا كان يفعل الفلاح حينما رآه الأمير؟~ما معنى «غرسوا فأكلنا ونغرس فيأكلون»؟|أمي
+الحمار العنيد|133|لماذا قرر الحمار أن يغنّي؟ ماذا حدث للحمار عندما رقص الجمل؟~ماذا تعلمت من قصة هذا الموضوع؟|محبة الوالدين
+زرياب البغدادي|137|أين نشأ الفنان زرياب؟~ما الذي فعله زرياب بالقيروان؟|أمي`;
+const RB={card:true,topics:[],q:{}};
+RDATA.split('\n').forEach((l,i)=>{const p=l.split('|'),id=i+1;
+  RB.topics.push({id,name:p[0]+' (ص'+p[1]+')',n:[id]});
+  RB.q[id]={parts:[{t:'القراءة',x:['اقرأ موضوع «'+p[0]+'» صفحة '+p[1]]},{t:'المحادثة',x:p[2].split('~')},{t:'المحفوظة',x:['اقرأ محفوظة «'+p[3]+'»']}]}});
+BANK['الصف الرابع|القراءة']=RB;
+let qg={key:null,cn:null,topics:new Set(),cnt:3,ans:false};
 const sh=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const item=(B,n)=>{const it=B.q[n];return it.parts?{parts:it.parts,a:null}:{parts:[{t:'',x:[it.q]}],a:it.a}};
 function pick(B,s){
   const pool=[...new Set([].concat(...B.topics.filter(t=>qg.topics.has(t.id)).map(t=>t.n)))];
   let deck=[];const per={};
@@ -126,30 +158,38 @@ function pick(B,s){
   return per;
 }
 function qText(B,s,r){
-  return 'أسئلة '+s.name+'\n\n'+[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar')).map((t,i)=>(i+1)+'. '+t.name+'\n'+((r.per[t.id]||[]).map((n,j)=>'   '+(j+1)+') '+B.q[n].q+(qg.ans?'\n      ← '+B.q[n].a:'')).join('\n'))).join('\n\n');
+  const sorted=[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar'));
+  return 'أسئلة '+s.name+'\n\n'+sorted.map((t,i)=>(i+1)+'. '+t.name+'\n'+(r.per[t.id]||[]).map((n,j)=>{const it=item(B,n);
+    return it.parts.map(p=>'   '+(p.t?p.t+': ':(j+1)+') ')+p.x.join(' — ')).join('\n')+(qg.ans&&it.a?'\n      ← '+it.a:'')}).join(B.card?'\n   ───\n':'\n')).join('\n\n');
+}
+function qHtml(B,n,j){
+  const it=item(B,n);
+  if(B.card)return `<div style="margin-top:8px;padding:8px 10px;border:1px dashed var(--bd);border-radius:12px">${it.parts.map(p=>`<div style="margin:3px 0"><b>${esc(p.t)}:</b> ${p.x.map(esc).join('<br>• ')}</div>`).join('')}</div>`;
+  return `<div style="margin-top:6px">${j+1}) ${esc(it.parts[0].x[0])}${qg.ans&&it.a?`<div class="note" style="color:var(--ok)">← ${esc(it.a)}</div>`:''}</div>`;
 }
 function showQ(){
   const A=document.querySelector('#app'),c=cls(),s=sec();S.qgen=S.qgen||{};
   const keys=Object.keys(BANK);
-  if(!qg.key)qg.key=keys.find(k=>c.name.includes(k.split('|')[0].replace('الصف ','')))||keys[0];
+  if(!qg.key||qg.cn!==c.id){qg.cn=c.id;qg.key=keys.find(k=>c.name.includes(k.split('|')[0].replace('الصف ','')))||keys[0];qg.topics=new Set();qg.cnt=BANK[qg.key].card?1:3}
   const B=BANK[qg.key],r=S.qgen[s.id]&&S.qgen[s.id].key===qg.key?S.qgen[s.id]:null;
   A.innerHTML=`<button class="btn" id="qb">→ الرئيسية</button><div class="hd">🎲 أسئلة تلقائية</div>
   <div class="note">${esc(c.name)} — ${esc(s.name)} · ${s.students.length} تلميذ</div>
   <div class="row"><select id="qk">${keys.map(k=>`<option value="${esc(k)}" ${k===qg.key?'selected':''}>${esc(k.replace('|',' — '))}</option>`).join('')}</select></div>
-  <b>اختر المواضيع:</b>
-  <div class="row">${B.topics.map(t=>`<button class="chip ${qg.topics.has(t.id)?'on':''}" data-qt="${t.id}">${esc(t.name)} (${t.n.length})</button>`).join('')}</div>
-  <div class="row"><span class="note">عدد الأسئلة لكل تلميذ</span><input type="number" id="qc" min="1" max="10" value="${qg.cnt}" style="width:80px"></div>
-  <div class="row"><button class="btn pri" id="qgo">🎲 اختر الأسئلة</button>${r?`<button class="btn" id="qa">${qg.ans?'إخفاء الأجوبة':'إظهار الأجوبة'}</button><button class="btn" id="qcp">📋 نسخ</button>`:''}</div>
-  ${r?[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar')).map((t,i)=>`<div class="item" style="flex-direction:column;align-items:stretch"><b>${i+1}. ${esc(t.name)}</b>${(r.per[t.id]||[]).map((n,j)=>`<div style="margin-top:6px">${j+1}) ${esc(B.q[n].q)}${qg.ans?`<div class="note" style="color:var(--ok)">← ${esc(B.q[n].a)}</div>`:''}</div>`).join('')}</div>`).join(''):'<p class="note">اختر موضوعاً أو أكثر ثم اضغط «اختر الأسئلة» فيأخذ كل تلميذ أسئلة مختلفة.</p>'}`;
+  <div class="row"><b>${B.card?'اختر الدروس:':'اختر المواضيع:'}</b><button class="btn" id="qall">✔ الكل</button></div>
+  <div class="row">${B.topics.map(t=>`<button class="chip ${qg.topics.has(t.id)?'on':''}" data-qt="${t.id}">${esc(t.name)}${B.card?'':' ('+t.n.length+')'}</button>`).join('')}</div>
+  <div class="row"><span class="note">${B.card?'عدد البطاقات لكل تلميذ (كل بطاقة: قراءة + محادثة + محفوظة)':'عدد الأسئلة لكل تلميذ'}</span><input type="number" id="qc" min="1" max="10" value="${qg.cnt}" style="width:80px"></div>
+  <div class="row"><button class="btn pri" id="qgo">🎲 اختر الأسئلة</button>${r?`${B.card?'':`<button class="btn" id="qa">${qg.ans?'إخفاء الأجوبة':'إظهار الأجوبة'}</button>`}<button class="btn" id="qcp">📋 نسخ</button>`:''}</div>
+  ${r?[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar')).map((t,i)=>`<div class="item" style="flex-direction:column;align-items:stretch"><b>${i+1}. ${esc(t.name)}</b>${(r.per[t.id]||[]).map((n,j)=>qHtml(B,n,j)).join('')}</div>`).join(''):'<p class="note">اختر موضوعاً أو أكثر ثم اضغط «اختر الأسئلة» فيأخذ كل تلميذ أسئلة مختلفة.</p>'}`;
   A.querySelector('#qb').onclick=()=>go('home');
-  A.querySelector('#qk').onchange=e=>{qg.key=e.target.value;qg.topics=new Set();showQ()};
+  A.querySelector('#qk').onchange=e=>{qg.key=e.target.value;qg.topics=new Set();qg.cnt=BANK[qg.key].card?1:3;showQ()};
+  A.querySelector('#qall').onclick=()=>{qg.topics=qg.topics.size===B.topics.length?new Set():new Set(B.topics.map(t=>t.id));showQ()};
   A.querySelectorAll('[data-qt]').forEach(b=>b.onclick=()=>{const id=+b.dataset.qt;qg.topics.has(id)?qg.topics.delete(id):qg.topics.add(id);showQ()});
-  A.querySelector('#qc').onchange=e=>{qg.cnt=Math.max(1,Math.min(10,+e.target.value||3))};
+  A.querySelector('#qc').onchange=e=>{qg.cnt=Math.max(1,Math.min(10,+e.target.value||1))};
   A.querySelector('#qgo').onclick=()=>{
-    if(!qg.topics.size){alert('اختر موضوعاً واحداً على الأقل');return}
+    if(!qg.topics.size){alert('اختر درساً أو موضوعاً واحداً على الأقل');return}
     if(!s.students.length){alert('لا يوجد تلاميذ في هذه الشعبة');return}
     S.qgen[s.id]={key:qg.key,per:pick(B,s),date:today()};save();showQ()};
-  if(r){A.querySelector('#qa').onclick=()=>{qg.ans=!qg.ans;showQ()};
+  if(r){if(A.querySelector('#qa'))A.querySelector('#qa').onclick=()=>{qg.ans=!qg.ans;showQ()};
     A.querySelector('#qcp').onclick=async()=>{try{await navigator.clipboard.writeText(qText(B,s,r));alert('تم النسخ')}catch(e){alert('تعذر النسخ')}}}
 }
 const prev=window.render;
