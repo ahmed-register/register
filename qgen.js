@@ -214,6 +214,37 @@ function qHtml(B,n,j){
   if(B.card)return `<div style="margin-top:8px;padding:8px 10px;border:1px dashed var(--bd);border-radius:12px">${it.parts.map(p=>`<div style="margin:3px 0"><b>${esc(p.t)}:</b> ${p.x.map(esc).join('<br>• ')}</div>`).join('')}</div>`;
   return `<div style="margin-top:8px">${j+1}) ${it.l?`<b>${esc(it.l)}</b><br>`:''}${esc(it.parts[0].x[0]).replace(/\n/g,'<br>')}${qg.ans&&it.a?`<div class="note" style="color:var(--ok)">← ${esc(it.a)}</div>`:''}</div>`;
 }
+const toAr=n=>String(n).replace(/\d/g,d=>'٠١٢٣٤٥٦٧٨٩'[d]);
+const ETYPES=['امتحانات نصف السنة','امتحانات نهاية السنة','امتحانات شهرية'];
+const cfgOf=()=>{S.cfg=S.cfg||{};return S.cfg};
+function paperLines(B,n){const it=item(B,n);return B.card?it.parts.map(p=>p.t+': '+p.x.join(' — ')):it.parts[0].x[0].split('\n')}
+function buildPaper(B,s,r,c){
+  const cfg=cfgOf(),subj=qg.key.split('|')[1];
+  const head={school:cfg.school||'',cls:c.name.replace(/^الصف\s*/,''),subj,time:cfg.time||'',etype:cfg.etype||ETYPES[0],year:cfg.year||'2026/2027'};
+  const body=[],P=(t,o)=>body.push(Object.assign({k:'p',t},o||{}));
+  const addItem=(n,pref,ind)=>{paperLines(B,n).forEach((ln,i)=>P((i===0?pref:'')+ln,{ind}));if(qg.ans&&B.q[n].a)P('الإجابة: '+B.q[n].a,{ind,clr:'1F7A3A',sz:22})};
+  const sorted=[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar'));
+  if(r.exam){
+    P('اسم الطالب: ..............................................   الشعبة: ..............',{b:1,af:160});
+    r.exam.forEach(x=>{
+      P('س'+toAr(x.n)+' / '+(x.rule==='two'?'أجب عن فرعين فقط:':'أجب عن الفرعين الآتيين:'),{b:1,bf:140,keep:1});
+      x.br.forEach((b,bi)=>{
+        if(b.ids.length>1){P(BL[bi]+' /',{b:1,ind:200,keep:1});b.ids.forEach((n,k)=>addItem(n,toAr(k+1)+'- ',500))}
+        else b.ids.forEach(n=>addItem(n,BL[bi]+' / ',200));
+      });
+    });
+  }else if(r.shared){
+    P('اسم الطالب: ..............................................   الشعبة: ..............',{b:1,af:160});
+    r.shared.forEach((n,j)=>addItem(n,'س'+toAr(j+1)+' / ',0));
+  }else{
+    P('الشعبة: '+s.name,{b:1});
+    const rows=sorted.map((t,i)=>{const ids=r.per[t.id]||[],lines=[];
+      ids.forEach((n,j)=>{paperLines(B,n).forEach((ln,k)=>lines.push((!B.card&&k===0?toAr(j+1)+') ':'')+ln))});
+      return [toAr(i+1),t.name,lines,''];});
+    body.push({k:'t',w:[7,23,60,10],head:['ت','اسم التلميذ','الأسئلة','الدرجة'],rows});
+  }
+  return {head,body,name:subj+' - '+c.name+' - '+head.etype};
+}
 function showQ(){
   const A=document.querySelector('#app'),c=cls(),s=sec();S.qgen=S.qgen||{};
   const keys=Object.keys(BANK);
@@ -221,13 +252,29 @@ function showQ(){
   const B=BANK[qg.key],r=S.qgen[s.id]&&S.qgen[s.id].key===qg.key?S.qgen[s.id]:null;
   A.innerHTML=`<button class="btn" id="qb">→ الرئيسية</button><div class="hd">🎲 أسئلة تلقائية</div>
   <div class="note">${esc(c.name)} — ${esc(s.name)} · ${s.students.length} تلميذ</div>
+  <div class="row"><button class="btn" id="psb">🏫 ${cfgOf().school?'المدرسة: '+esc(cfgOf().school):'اكتب اسم المدرسة'}</button></div>
   <div class="row"><select id="qk">${keys.map(k=>`<option value="${esc(k)}" ${k===qg.key?'selected':''}>${esc(k.replace('|',' — '))}</option>`).join('')}</select></div>
   <div class="row"><b>${B.card?'اختر الدروس:':'اختر المواضيع:'}</b><button class="btn" id="qall">✔ الكل</button></div>
   <div class="row">${B.topics.map(t=>`<button class="chip ${qg.topics.has(t.id)?'on':''}" data-qt="${t.id}">${esc(t.name)}${B.card?'':' ('+t.n.length+')'}</button>`).join('')}</div>
   ${B.modes?`<div class="row"><b>نوع الامتحان:</b><button class="chip ${qg.mode!=='written'?'on':''}" id="qmo">🗣 امتحان شفوي</button><button class="chip ${qg.mode==='written'?'on':''}" id="qmw">📝 امتحان تحريري</button></div><div class="note">${qg.mode==='written'?'تحريري: أسئلة موحدة للصف كله وشعبه':'شفوي: أسئلة مختلفة لكل تلميذ'}</div>`:''}
   <div class="row"><span class="note">${(B.exam&&qg.mode==='written')?'الامتحان التحريري: خمسة أسئلة — س١ وس٢ وس٤ من فرعين، وس٣ وس٥ من ثلاثة فروع يجيب التلميذ عن فرعين فقط':B.card?'عدد البطاقات لكل تلميذ (كل بطاقة: قراءة + محادثة + محفوظة)':(B.shared||(B.modes&&qg.mode==='written'))?'عدد الأسئلة للصف كله (الأسئلة نفسها لكل التلاميذ)':'عدد الأسئلة لكل تلميذ'}</span>${B.exam&&qg.mode==='written'?'':`<input type="number" id="qc" min="1" max="10" value="${qg.cnt}" style="width:80px">`}</div>
   <div class="row"><button class="btn pri" id="qgo">🎲 اختر الأسئلة</button>${r?`${(B.card||B.shared||B.modes)&&!B.hasAns?'':`<button class="btn" id="qa">${qg.ans?'إخفاء الأجوبة':'إظهار الأجوبة'}</button>`}<button class="btn" id="qcp">📋 نسخ</button>`:''}</div>
+  ${r?`<div class="item" style="flex-direction:column;align-items:stretch;margin-top:10px"><b>📄 ورقة الأسئلة (A4) للإرسال أو الطباعة</b>
+    <div class="row">${ETYPES.map(t=>`<button class="chip ${(cfgOf().etype||ETYPES[0])===t?'on':''}" data-et="${t}">${t}</button>`).join('')}</div>
+    <div class="row"><input id="pyr" value="${esc(cfgOf().year||'2026/2027')}" style="width:38%" placeholder="العام الدراسي"><input id="ptm" value="${esc(cfgOf().time||'')}" style="flex:1" placeholder="الوقت (مثال: ساعة ونصف)"></div>
+    <div class="row"><button class="btn pri" id="pdoc">📄 ملف Word</button><button class="btn" id="pwa">🟢 واتساب</button><button class="btn" id="ppr">🖨 طباعة</button></div>
+    <div class="note">الورقة: بسم الله في الوسط، واسم المدرسة يميناً، والصف والمادة والوقت يساراً. وتظهر الأجوبة في الورقة فقط إذا فعّلت «إظهار الأجوبة».</div></div>`:''}
   ${r&&r.exam?`<div class="note" style="margin-top:8px">الأسئلة نفسها لكل تلاميذ ${esc(c.name)} (${c.sections.map(x=>esc(x.name)).join(' و ')})</div>`+examHtml(B,r):r&&r.shared?`<div class="note" style="margin-top:8px">الأسئلة نفسها لكل تلاميذ ${esc(c.name)} (${c.sections.map(x=>esc(x.name)).join(' و ')})</div>`+r.shared.map((n,j)=>`<div class="item" style="flex-direction:column;align-items:stretch">${qHtml(B,n,j)}</div>`).join(''):r?[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar')).map((t,i)=>`<div class="item" style="flex-direction:column;align-items:stretch"><b>${i+1}. ${esc(t.name)}</b>${(r.per[t.id]||[]).map((n,j)=>qHtml(B,n,j)).join('')}</div>`).join(''):'<p class="note">اختر موضوعاً أو أكثر ثم اضغط «اختر الأسئلة» فيأخذ كل تلميذ أسئلة مختلفة.</p>'}`;
+  A.querySelector('#psb').onclick=()=>{const v=prompt('اكتب اسم المدرسة',cfgOf().school||'');if(v===null)return;cfgOf().school=v.trim();save();showQ()};
+  if(r){
+    A.querySelectorAll('[data-et]').forEach(b=>b.onclick=()=>{cfgOf().etype=b.dataset.et;save();showQ()});
+    A.querySelector('#pyr').oninput=e=>{cfgOf().year=e.target.value.trim();save()};
+    A.querySelector('#ptm').oninput=e=>{cfgOf().time=e.target.value.trim();save()};
+    const need=()=>{if(!window.Paper){alert('جارٍ تحميل الميزة، أعد المحاولة بعد لحظات وأنت متصل بالإنترنت');return false}if(!cfgOf().school&&!confirm('لم تكتب اسم المدرسة بعد. هل تريد المتابعة بدونه؟'))return false;return true};
+    A.querySelector('#pdoc').onclick=()=>{if(need())window.Paper.download(buildPaper(B,s,r,c))};
+    A.querySelector('#pwa').onclick=()=>{if(need())window.Paper.share(buildPaper(B,s,r,c))};
+    A.querySelector('#ppr').onclick=()=>{if(need())window.Paper.print(buildPaper(B,s,r,c))};
+  }
   A.querySelector('#qb').onclick=()=>go('home');
   A.querySelector('#qk').onchange=e=>{qg.key=e.target.value;qg.topics=new Set();qg.cnt=BANK[qg.key].def||3;qg.mode='oral';showQ()};
   if(A.querySelector('#qmo')){A.querySelector('#qmo').onclick=()=>{qg.mode='oral';qg.cnt=3;showQ()};A.querySelector('#qmw').onclick=()=>{qg.mode='written';qg.cnt=5;showQ()}}
@@ -254,7 +301,13 @@ window.render=function(){
       const b=document.createElement('button');b.className='tile t5';b.dataset.qg='1';
       b.innerHTML='<b>🎲</b>أسئلة تلقائية<small>من المواضيع</small>';b.onclick=()=>go('qgen');g.appendChild(b);
     }
+    if(g&&!g.querySelector('[data-sch]')){
+      const b2=document.createElement('button');b2.className='tile t8';b2.dataset.sch='1';
+      b2.innerHTML='<b>🏫</b>اسم المدرسة<small>'+esc(cfgOf().school||'اضغط للكتابة')+'</small>';
+      b2.onclick=()=>{const v=prompt('اكتب اسم المدرسة',cfgOf().school||'');if(v===null)return;cfgOf().school=v.trim();save();render()};g.appendChild(b2);
+    }
   }
 };
 if(view==='home')window.render();
+const ps=document.createElement('script');ps.src='paper.js';document.head.appendChild(ps);
 })();

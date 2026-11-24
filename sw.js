@@ -1,6 +1,6 @@
 const C='reg-v4',KEEP='school-books-v1',V='10.14.1',FB=['app','auth','firestore'].map(n=>'https://www.gstatic.com/firebasejs/'+V+'/firebase-'+n+'.js');
 self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(async c=>{
-  await Promise.all(['./','index.html','extras.js','qgen.js','manifest.json','icon-192.png','icon-512.png'].map(u=>c.add(new Request(u,{cache:'reload'})).catch(()=>{})));
+  await Promise.all(['./','index.html','extras.js','qgen.js','paper.js','manifest.json','icon-192.png','icon-512.png'].map(u=>c.add(new Request(u,{cache:'reload'})).catch(()=>{})));
   await Promise.all(FB.map(u=>c.add(new Request(u,{mode:'cors'})).catch(()=>{})));
 }));self.skipWaiting()});
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C&&k!==KEEP).map(k=>caches.delete(k)))).then(()=>clients.claim())));
