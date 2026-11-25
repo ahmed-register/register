@@ -1,4 +1,5 @@
-/* ورقة الأسئلة: ملف Word (A4) + واتساب + طباعة. لا يحتاج أي مكتبة خارجية */
+/* ورقة الأسئلة: ملف Word (A4) + واتساب + طباعة. لا يحتاج أي مكتبة خارجية
+   جديد: اسم المعلم في شريط سفلي على يسار الورقة (يُحفظ لكل مادة) */
 (function(){
 const MIME='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
 const enc=new TextEncoder();
@@ -20,6 +21,9 @@ function zip(files){
   all.forEach(a=>{res.set(a,p);p+=a.length});return res;
 }
 const X=t=>String(t==null?'':t).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+/* اسم المعلم: من الورقة نفسها أو من المحفوظ لكل مادة */
+const teacherOf=s=>{try{return (((S.cfg||{}).teachers||{})[s]||'').trim()}catch(e){return ''}};
+const TCH=m=>((m.head&&m.head.teacher)||teacherOf(m.head&&m.head.subj)||'').trim();
 const FONT='<w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>';
 function runs(t,o){
   const sz=o.sz||26,parts=String(t).split('\n');
@@ -46,16 +50,28 @@ function table(b){
 }
 function docXml(m){
   const body=m.body.map(b=>b.k==='t'?table(b):para(b.t,{b:b.b,ind:b.ind,bf:b.bf,af:b.af,keep:b.keep,clr:b.clr,sz:b.sz||26,jc:b.jc})).join('');
-  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+head(m)+body
-   +'<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="850" w:right="1134" w:bottom="850" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/><w:bidi/></w:sectPr></w:body></w:document>';
+  const t=TCH(m);
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>'+head(m)+body
+   +'<w:sectPr>'+(t?'<w:footerReference w:type="default" r:id="rId1"/>':'')+'<w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="850" w:right="1134" w:bottom="850" w:left="1134" w:header="567" w:footer="567" w:gutter="0"/><w:bidi/></w:sectPr></w:body></w:document>';
+}
+/* الشريط السفلي: اسم المعلم على يسار الصفحة */
+function footerXml(t){
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+   +para('اسم المعلم: '+t,{b:1,sz:22,jc:'l',af:0})+'</w:ftr>';
 }
 function docxBytes(m){
   const f=(n,s)=>({n,d:enc.encode(s)});
-  return zip([
-    f('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>'),
+  const t=TCH(m);
+  const files=[
+    f('[Content_Types].xml','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>'+(t?'<Override PartName="/word/footer1.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.footer+xml"/>':'')+'</Types>'),
     f('_rels/.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>'),
     f('word/document.xml',docXml(m))
-  ]);
+  ];
+  if(t){
+    files.push(f('word/_rels/document.xml.rels','<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/footer" Target="footer1.xml"/></Relationships>'));
+    files.push(f('word/footer1.xml',footerXml(t)));
+  }
+  return zip(files);
 }
 const fname=m=>((m.name||'اسئلة')+'.docx').replace(/[\\/:*?"<>|]+/g,' ');
 const blobOf=m=>new Blob([docxBytes(m)],{type:MIME});
@@ -63,6 +79,7 @@ function plain(m){
   const h=m.head,L=[];
   L.push('بسم الله الرحمن الرحيم',(h.etype||'')+' للعام '+(h.year||''),(h.school?'إدارة مدرسة '+h.school:''),'الصف: '+(h.cls||'')+' | المادة: '+(h.subj||'')+(h.time?' | الوقت: '+h.time:''),'');
   m.body.forEach(b=>{if(b.k==='t'){b.rows.forEach(r=>{L.push(r[0]+'. '+r[1]);(Array.isArray(r[2])?r[2]:[r[2]]).forEach(x=>L.push('   '+x));L.push('')})}else L.push((b.ind?'   ':'')+b.t)});
+  const t=TCH(m);if(t)L.push('','اسم المعلم: '+t);
   return L.filter((x,i,a)=>!(x===''&&a[i-1]==='')).join('\n');
 }
 function download(m){
@@ -79,13 +96,13 @@ async function share(m){
   location.href='https://wa.me/?text='+encodeURIComponent(plain(m));
 }
 function htmlOf(m){
-  const h=m.head,e=X;
+  const h=m.head,e=X,t=TCH(m);
   const bodyH=m.body.map(b=>{
     if(b.k==='t')return '<table class="g"><tr>'+b.head.map((x,i)=>`<th style="width:${b.w[i]}%">${e(x)}</th>`).join('')+'</tr>'+b.rows.map(r=>'<tr>'+r.map((c,i)=>`<td${i===0?' class="c"':''}>${(Array.isArray(c)?c:[c]).map(x=>e(x)).join('<br>')}</td>`).join('')+'</tr>').join('')+'</table>';
     return `<p style="${b.b?'font-weight:700;':''}${b.ind?'margin-inline-start:'+Math.round(b.ind/20*1.33)+'px;':''}${b.bf?'margin-top:'+Math.round(b.bf/15)+'px;':''}${b.clr?'color:#'+b.clr+';':''}${b.sz&&b.sz<26?'font-size:14px;':''}">${e(b.t).replace(/\n/g,'<br>')}</p>`;
   }).join('');
-  return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>'+e(m.name||'')+'</title><style>@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Tahoma,sans-serif;direction:rtl;font-size:16px;color:#000;margin:0;line-height:1.7}p{margin:2px 0 6px}table.h{width:100%;border-collapse:collapse}table.h td{vertical-align:top;width:33.3%;padding:0 4px}.hl{border-bottom:2px solid #000;margin:8px 0 12px}table.g{width:100%;border-collapse:collapse;margin-top:6px}table.g th,table.g td{border:1px solid #555;padding:4px 6px;vertical-align:top}table.g th{background:#e7ecf5}table.g tr{page-break-inside:avoid}.c{text-align:center}</style></head><body>'
-   +'<table class="h"><tr><td style="text-align:right;font-weight:700">'+(h.school?'إدارة مدرسة '+e(h.school):'إدارة المدرسة: .............')+'</td><td style="text-align:center;font-weight:700"><div style="font-size:21px">بسم الله الرحمن الرحيم</div><div>'+e(h.etype||'')+' للعام '+e(h.year||'')+'</div></td><td style="text-align:left;font-weight:700">الصف: '+e(h.cls||'.........')+'<br>المادة: '+e(h.subj||'.........')+'<br>الوقت: '+e(h.time||'.........')+'</td></tr></table><div class="hl"></div>'+bodyH+'</body></html>';
+  return '<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>'+e(m.name||'')+'</title><style>@page{size:A4;margin:14mm}*{box-sizing:border-box}body{font-family:Arial,Tahoma,sans-serif;direction:rtl;font-size:16px;color:#000;margin:0;line-height:1.7}p{margin:2px 0 6px}table.h{width:100%;border-collapse:collapse}table.h td{vertical-align:top;width:33.3%;padding:0 4px}.hl{border-bottom:2px solid #000;margin:8px 0 12px}table.g{width:100%;border-collapse:collapse;margin-top:6px}table.g th,table.g td{border:1px solid #555;padding:4px 6px;vertical-align:top}table.g th{background:#e7ecf5}table.g tr{page-break-inside:avoid}.c{text-align:center}'+(t?'.ft{position:fixed;bottom:0;left:0;font-weight:700;font-size:15px}body{padding-bottom:30px}':'')+'</style></head><body>'
+   +'<table class="h"><tr><td style="text-align:right;font-weight:700">'+(h.school?'إدارة مدرسة '+e(h.school):'إدارة المدرسة: .............')+'</td><td style="text-align:center;font-weight:700"><div style="font-size:21px">بسم الله الرحمن الرحيم</div><div>'+e(h.etype||'')+' للعام '+e(h.year||'')+'</div></td><td style="text-align:left;font-weight:700">الصف: '+e(h.cls||'.........')+'<br>المادة: '+e(h.subj||'.........')+'<br>الوقت: '+e(h.time||'.........')+'</td></tr></table><div class="hl"></div>'+bodyH+(t?'<div class="ft">اسم المعلم: '+e(t)+'</div>':'')+'</body></html>';
 }
 function print(m){
   const w=window.open('','_blank');
@@ -94,4 +111,24 @@ function print(m){
   setTimeout(()=>{try{w.focus();w.print()}catch(e){}},500);
 }
 window.Paper={download,share,print,docxBytes,plain,htmlOf,docXml};
+
+/* ===== حقل «اسم المعلم» داخل صندوق ورقة الأسئلة (لكل مادة) ===== */
+function injectTeacher(){
+  const A=document.querySelector('#app');if(!A)return;
+  const yr=A.querySelector('#pyr')||A.querySelector('#islyr');
+  if(!yr||A.querySelector('#pteacher'))return;
+  const qk=A.querySelector('#qk'),subj=qk?String(qk.value).split('|')[1]:'';
+  if(!subj)return;
+  const row=yr.closest('.row');if(!row)return;
+  const d=document.createElement('div');d.className='row';
+  const inp=document.createElement('input');inp.id='pteacher';inp.placeholder='اسم معلم مادة '+subj+' (يظهر أسفل الورقة على اليسار)';inp.style.flex='1';
+  inp.value=teacherOf(subj);
+  inp.oninput=()=>{S.cfg=S.cfg||{};S.cfg.teachers=S.cfg.teachers||{};const v=inp.value.trim();if(v)S.cfg.teachers[subj]=v;else delete S.cfg.teachers[subj];save()};
+  d.appendChild(inp);row.after(d);
+}
+if(typeof document!=='undefined'){
+  const A0=document.querySelector('#app');
+  if(A0)new MutationObserver(()=>{try{injectTeacher()}catch(e){}}).observe(A0,{childList:true,subtree:true});
+  try{injectTeacher()}catch(e){}
+}
 })();
