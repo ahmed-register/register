@@ -311,3 +311,4 @@ window.render=function(){
 if(view==='home')window.render();
 const ps=document.createElement('script');ps.src='paper.js';document.head.appendChild(ps);
 })();
+document.head.appendChild(Object.assign(document.createElement('script'),{src:'bank-islamic6.js'}));
