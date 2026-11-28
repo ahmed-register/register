@@ -120,8 +120,10 @@ window.QBANK=BANK;
 
 let qg={key:null,cn:null,topics:new Set(),cnt:3,ans:false,mode:'oral'};
 const sh=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
-const item=(B,n)=>{const it=B.q[n];return it.parts?{parts:it.parts,a:null}:{parts:[{t:it.l||'',x:[it.q]}],a:it.a,l:it.l}};
-const D5=['١','٢','٣','٤','٥'],BL=['أ','ب','ج'];
+const clean=s=>String(s==null?'':s).replace(/^س[\d٠-٩]+\s*\/\s*/,'');
+const item=(B,n)=>{const it=B.q[n];return it.parts?{parts:it.parts,a:null}:{parts:[{t:it.l||'',x:[clean(it.q)]}],a:it.a,l:it.l}};
+const D5=['١','٢','٣','٤','٥','٦','٧','٨','٩'],BL=['أ','ب','ج'];
+const RL={both:'أجب عن الفرعين',two:'أجب عن فرعين فقط',one:'أجب عن فرع واحد فقط'};
 function takeBranch(order,k,used,st){
   for(let tries=0;tries<2;tries++){
     for(let z=0;z<order.length;z++){const t=order[(st.p+z)%order.length];const av=t.n.filter(x=>!used.has(x));
@@ -132,14 +134,43 @@ function takeBranch(order,k,used,st){
   }
   return {ids:[],tid:null};
 }
+/* خطط الامتحان التحريري. الرياضيات للصف الرابع: 5 أسئلة من 10 درجات (لكل سؤال درجتان)
+   س1 وس3 وس5 فرعان يُجاب عنهما، وس2 وس4 ثلاثة فروع يُجاب عن فرعين فقط. k = عدد الأسئلة في كل فرع */
+const PLAN_OLD=[{rule:'both',k:[2,3]},{rule:'both',k:[2,3]},{rule:'two',k:[1,1,1]},{rule:'both',k:[2,3]},{rule:'two',k:[1,1,1]}];
+const PLAN_M4=[{rule:'both',k:[1,1]},{rule:'two',k:[1,1,1]},{rule:'both',k:[1,1]},{rule:'two',k:[1,1,1]},{rule:'both',k:[1,1]}];
+const isM4=key=>String(key).startsWith('الصف الرابع|');
+/* العربي: التعبير (موضوعان، يُجاب عن واحد) + القواعد (3 أسئلة نصف السنة أو 5 نهاية السنة، كل سؤال فرعان) + الخط (سؤال) */
+function pickArabic(B){
+  const on=t=>qg.topics.has(t.id);
+  const ess=sh(B.topics.filter(t=>t.kind==='essay'&&on(t)));
+  const gr=sh(B.topics.filter(t=>t.kind==='gram'&&on(t)));
+  const used=new Set(),st={p:0},out=[];
+  out.push({n:1,rule:'one',br:ess.slice(0,2).map(t=>({ids:[t.n[0]],tid:t.id}))});
+  const ng=cfgOf().etype===ETYPES[1]?5:3;
+  for(let i=0;i<ng;i++){
+    const a=takeBranch(gr,2,used,st);
+    out.push({n:out.length+1,rule:'both',br:a.ids.map(x=>({ids:[x],tid:a.tid}))});
+  }
+  const kh=B.khat[Math.floor(Math.random()*B.khat.length)];
+  out.push({n:out.length+1,rule:'single',br:[{ids:[kh],tid:null}]});
+  return out;
+}
 function pickExam(B){
+  if(B.arExam)return pickArabic(B);
   const order=sh(B.topics.filter(t=>qg.topics.has(t.id))),used=new Set(),st={p:0};
-  const plan=[{rule:'both',k:[2,3]},{rule:'both',k:[2,3]},{rule:'two',k:[1,1,1]},{rule:'both',k:[2,3]},{rule:'two',k:[1,1,1]}];
+  const plan=isM4(qg.key)?PLAN_M4:PLAN_OLD;
   return plan.map((q,i)=>({n:i+1,rule:q.rule,br:q.k.map(k=>takeBranch(order,k,used,st))}));
 }
-const topicName=(B,id)=>{const t=B.topics.find(x=>x.id===id);return t?t.name:''};
+const nl=t=>esc(t).replace(/\n/g,'<br>');
 function examHtml(B,r){
-  return r.exam.map(q=>`<div class="item" style="flex-direction:column;align-items:stretch"><b>س${D5[q.n-1]} / ${q.rule==='two'?'أجب عن فرعين فقط':'أجب عن الفرعين'}:</b>${q.br.map((b,bi)=>`<div style="margin-top:8px"><b>${BL[bi]}/</b> <span class="note">(${esc(topicName(B,b.tid))})</span>${b.ids.map((n,k)=>`<div style="margin-top:4px;padding-inline-start:12px">${b.ids.length>1?(k+1)+'- ':''}${esc(B.q[n].q)}${qg.ans&&B.q[n].a?`<div class="note" style="color:var(--ok)">← ${esc(B.q[n].a)}</div>`:''}</div>`).join('')}</div>`).join('')}</div>`).join('');
+  const ans=n=>qg.ans&&B.q[n].a?`<div class="note" style="color:var(--ok)">← ${esc(B.q[n].a)}</div>`:'';
+  const box='<div class="item" style="flex-direction:column;align-items:stretch">';
+  return r.exam.map(q=>{
+    if(q.rule==='single'){const n=q.br[0].ids[0];return box+`<div><b>س${D5[q.n-1]} /</b> ${nl(clean(B.q[n].q))}${ans(n)}</div></div>`}
+    return box+`<b>س${D5[q.n-1]} / ${RL[q.rule]}:</b>`+q.br.map((b,bi)=>b.ids.length===1
+      ?`<div style="margin-top:8px"><b>${BL[bi]}/</b> ${nl(clean(B.q[b.ids[0]].q))}${ans(b.ids[0])}</div>`
+      :`<div style="margin-top:8px"><b>${BL[bi]}/</b>${b.ids.map((n,k)=>`<div style="margin-top:4px;padding-inline-start:12px">${k+1}- ${nl(clean(B.q[n].q))}${ans(n)}</div>`).join('')}</div>`).join('')+'</div>';
+  }).join('');
 }
 function pick(B,s){
   const pool=[...new Set([].concat(...B.topics.filter(t=>qg.topics.has(t.id)).map(t=>t.n)))];
@@ -150,7 +181,8 @@ function pick(B,s){
   return per;
 }
 function qText(B,s,r){
-  if(r.exam)return 'أسئلة '+cls().name+' — '+qg.key.split('|')[1]+' (امتحان تحريري)\n\n'+r.exam.map(q=>'س'+D5[q.n-1]+': '+(q.rule==='two'?'أجب عن فرعين فقط':'أجب عن الفرعين')+'\n'+q.br.map((b,bi)=>'  '+BL[bi]+') '+b.ids.map((n,k)=>(b.ids.length>1?(k+1)+'- ':'')+B.q[n].q+(qg.ans&&B.q[n].a?'\n        ← '+B.q[n].a:'')).join('\n      ')).join('\n')).join('\n\n');
+  if(r.exam){const tx=n=>clean(B.q[n].q)+(qg.ans&&B.q[n].a?'\n        ← '+B.q[n].a:'');
+    return 'أسئلة '+cls().name+' — '+qg.key.split('|')[1]+' (امتحان تحريري)\n\n'+r.exam.map(q=>q.rule==='single'?'س'+D5[q.n-1]+': '+tx(q.br[0].ids[0]):'س'+D5[q.n-1]+': '+RL[q.rule]+'\n'+q.br.map((b,bi)=>'  '+BL[bi]+') '+b.ids.map((n,k)=>(b.ids.length>1?(k+1)+'- ':'')+tx(n)).join('\n      ')).join('\n')).join('\n\n')}
   if(r.shared)return 'أسئلة '+cls().name+' — '+qg.key.split('|')[1]+'\n\n'+r.shared.map((n,j)=>{const it=item(B,n);return (j+1)+') '+it.l+'\n   '+it.parts[0].x[0].split('\n').join('\n   ')+(qg.ans&&it.a?'\n   ← '+it.a:'')}).join('\n\n');
   const sorted=[...s.students].sort((x,y)=>x.name.localeCompare(y.name,'ar'));
   return 'أسئلة '+s.name+'\n\n'+sorted.map((t,i)=>(i+1)+'. '+t.name+'\n'+(r.per[t.id]||[]).map((n,j)=>{const it=item(B,n);
@@ -174,7 +206,8 @@ function buildPaper(B,s,r,c){
   if(r.exam){
     P('اسم الطالب: ..............................................   الشعبة: ..............',{b:1,af:160});
     r.exam.forEach(x=>{
-      P('س'+toAr(x.n)+' / '+(x.rule==='two'?'أجب عن فرعين فقط:':'أجب عن الفرعين الآتيين:'),{b:1,bf:140,keep:1});
+      if(x.rule==='single'){x.br[0].ids.forEach(n=>addItem(n,'س'+toAr(x.n)+' / ',0));return}
+      P('س'+toAr(x.n)+' / '+(x.rule==='both'?'أجب عن الفرعين الآتيين':RL[x.rule])+':',{b:1,bf:140,keep:1});
       x.br.forEach((b,bi)=>{
         if(b.ids.length>1){P(BL[bi]+' /',{b:1,ind:200,keep:1});b.ids.forEach((n,k)=>addItem(n,toAr(k+1)+'- ',500))}
         else b.ids.forEach(n=>addItem(n,BL[bi]+' / ',200));
@@ -192,19 +225,27 @@ function buildPaper(B,s,r,c){
   }
   return {head,body,name:subj+' - '+c.name+' - '+head.etype};
 }
+const chip=(B,t)=>`<button class="chip ${qg.topics.has(t.id)?'on':''}" data-qt="${t.id}">${esc(t.name)}${(B.card||B.arExam)?'':' ('+t.n.length+')'}</button>`;
+const chipsH=B=>B.arExam
+  ?'<div class="note" style="margin-top:4px"><b>التعبير</b> — اختر المواضيع (يُختار منها موضوعان والتلميذ يجيب عن واحد)</div><div class="row">'+B.topics.filter(t=>t.kind==='essay').map(t=>chip(B,t)).join('')+'</div><div class="note"><b>القواعد</b> — اختر المواضيع</div><div class="row">'+B.topics.filter(t=>t.kind==='gram').map(t=>chip(B,t)).join('')+'</div><div class="note">الخط: سؤال واحد يُختار تلقائياً</div>'
+  :'<div class="row">'+B.topics.map(t=>chip(B,t)).join('')+'</div>';
+const aetH=B=>B.arExam?'<div class="row"><b>نوع الامتحان:</b>'+ETYPES.slice(0,2).map(t=>`<button class="chip ${(cfgOf().etype===ETYPES[1])===(t===ETYPES[1])?'on':''}" data-aet="${t}">${t}</button>`).join('')+'</div>':'';
+const exNote=B=>B.arExam?'امتحان اللغة العربية التحريري: التعبير (موضوعان والتلميذ يجيب عن واحد) + القواعد ('+(cfgOf().etype===ETYPES[1]?'خمسة':'ثلاثة')+' أسئلة، كل سؤال من فرعين) + الخط (سؤال واحد)':isM4(qg.key)?'الامتحان التحريري (من 10 درجات): خمسة أسئلة — س١ وس٣ وس٥ من فرعين يجيب عنهما التلميذ، وس٢ وس٤ من ثلاثة فروع يجيب التلميذ عن فرعين فقط':'الامتحان التحريري: خمسة أسئلة — س١ وس٢ وس٤ من فرعين، وس٣ وس٥ من ثلاثة فروع يجيب التلميذ عن فرعين فقط';
 function showQ(){
   const A=document.querySelector('#app'),c=cls(),s=sec();S.qgen=S.qgen||{};
   const keys=Object.keys(BANK);
   if(!qg.key||qg.cn!==c.id){qg.cn=c.id;qg.key=keys.find(k=>c.name.includes(k.split('|')[0].replace('الصف ','')))||keys[0];qg.topics=new Set();qg.cnt=BANK[qg.key].def||3;qg.mode='oral'}
   const B=BANK[qg.key],r=S.qgen[s.id]&&S.qgen[s.id].key===qg.key?S.qgen[s.id]:null;
+  const exW=B.arExam||(B.exam&&qg.mode==='written');
   A.innerHTML=`<button class="btn" id="qb">→ الرئيسية</button><div class="hd">🎲 أسئلة تلقائية</div>
   <div class="note">${esc(c.name)} — ${esc(s.name)} · ${s.students.length} تلميذ</div>
   <div class="row"><button class="btn" id="psb">🏫 ${cfgOf().school?'المدرسة: '+esc(cfgOf().school):'اكتب اسم المدرسة'}</button></div>
   <div class="row"><select id="qk">${keys.map(k=>`<option value="${esc(k)}" ${k===qg.key?'selected':''}>${esc(k.replace('|',' — '))}</option>`).join('')}</select></div>
   <div class="row"><b>${B.card?'اختر الدروس:':'اختر المواضيع:'}</b><button class="btn" id="qall">✔ الكل</button></div>
-  <div class="row">${B.topics.map(t=>`<button class="chip ${qg.topics.has(t.id)?'on':''}" data-qt="${t.id}">${esc(t.name)}${B.card?'':' ('+t.n.length+')'}</button>`).join('')}</div>
+  ${chipsH(B)}
+  ${aetH(B)}
   ${B.modes?`<div class="row"><b>نوع الامتحان:</b><button class="chip ${qg.mode!=='written'?'on':''}" id="qmo">🗣 امتحان شفوي</button><button class="chip ${qg.mode==='written'?'on':''}" id="qmw">📝 امتحان تحريري</button></div><div class="note">${qg.mode==='written'?'تحريري: أسئلة موحدة للصف كله وشعبه':'شفوي: أسئلة مختلفة لكل تلميذ'}</div>`:''}
-  <div class="row"><span class="note">${(B.exam&&qg.mode==='written')?'الامتحان التحريري: خمسة أسئلة — س١ وس٢ وس٤ من فرعين، وس٣ وس٥ من ثلاثة فروع يجيب التلميذ عن فرعين فقط':B.card?'عدد البطاقات لكل تلميذ (كل بطاقة: قراءة + محادثة + محفوظة)':(B.shared||(B.modes&&qg.mode==='written'))?'عدد الأسئلة للصف كله (الأسئلة نفسها لكل التلاميذ)':'عدد الأسئلة لكل تلميذ'}</span>${B.exam&&qg.mode==='written'?'':`<input type="number" id="qc" min="1" max="10" value="${qg.cnt}" style="width:80px">`}</div>
+  <div class="row"><span class="note">${exW?exNote(B):B.card?'عدد البطاقات لكل تلميذ (كل بطاقة: قراءة + محادثة + محفوظة)':(B.shared||(B.modes&&qg.mode==='written'))?'عدد الأسئلة للصف كله (الأسئلة نفسها لكل التلاميذ)':'عدد الأسئلة لكل تلميذ'}</span>${exW?'':`<input type="number" id="qc" min="1" max="10" value="${qg.cnt}" style="width:80px">`}</div>
   <div class="row"><button class="btn pri" id="qgo">🎲 اختر الأسئلة</button>${r?`${(B.card||B.shared||B.modes)&&!B.hasAns?'':`<button class="btn" id="qa">${qg.ans?'إخفاء الأجوبة':'إظهار الأجوبة'}</button>`}<button class="btn" id="qcp">📋 نسخ</button>`:''}</div>
   ${r?`<div class="item" style="flex-direction:column;align-items:stretch;margin-top:10px"><b>📄 ورقة الأسئلة (A4) للإرسال أو الطباعة</b>
     <div class="row">${ETYPES.map(t=>`<button class="chip ${(cfgOf().etype||ETYPES[0])===t?'on':''}" data-et="${t}">${t}</button>`).join('')}</div>
@@ -223,6 +264,7 @@ function showQ(){
     A.querySelector('#ppr').onclick=()=>{if(need())window.Paper.print(buildPaper(B,s,r,c))};
   }
   A.querySelector('#qb').onclick=()=>go('home');
+  A.querySelectorAll('[data-aet]').forEach(b=>b.onclick=()=>{cfgOf().etype=b.dataset.aet;c.sections.forEach(x=>{delete S.qgen[x.id]});save();showQ()});
   A.querySelector('#qk').onchange=e=>{qg.key=e.target.value;qg.topics=new Set();qg.cnt=BANK[qg.key].def||3;qg.mode='oral';showQ()};
   if(A.querySelector('#qmo')){A.querySelector('#qmo').onclick=()=>{qg.mode='oral';qg.cnt=3;showQ()};A.querySelector('#qmw').onclick=()=>{qg.mode='written';qg.cnt=5;showQ()}}
   A.querySelector('#qall').onclick=()=>{qg.topics=qg.topics.size===B.topics.length?new Set():new Set(B.topics.map(t=>t.id));showQ()};
@@ -230,7 +272,12 @@ function showQ(){
   if(A.querySelector('#qc'))A.querySelector('#qc').onchange=e=>{qg.cnt=Math.max(1,Math.min(10,+e.target.value||1))};
   A.querySelector('#qgo').onclick=()=>{
     if(!qg.topics.size){alert('اختر درساً أو موضوعاً واحداً على الأقل');return}
-    if(B.exam&&qg.mode==='written'){const ex=pickExam(B);c.sections.forEach(x=>{S.qgen[x.id]={key:qg.key,exam:ex,date:today()}});save();showQ();return}
+    if(B.arExam){
+      const ne=B.topics.filter(t=>t.kind==='essay'&&qg.topics.has(t.id)).length,ng=B.topics.filter(t=>t.kind==='gram'&&qg.topics.has(t.id)).length;
+      if(ne<2){alert('اختر موضوعين على الأقل من مواضيع التعبير');return}
+      if(ng<1){alert('اختر موضوعاً واحداً على الأقل من القواعد');return}
+    }
+    if(B.arExam||(B.exam&&qg.mode==='written')){const ex=pickExam(B);c.sections.forEach(x=>{S.qgen[x.id]={key:qg.key,exam:ex,date:today()}});save();showQ();return}
     if(B.shared||(B.modes&&qg.mode==='written')){const pool=[...new Set([].concat(...B.topics.filter(t=>qg.topics.has(t.id)).map(t=>t.n)))],ids=sh(pool).slice(0,qg.cnt);
       c.sections.forEach(x=>{S.qgen[x.id]={key:qg.key,shared:ids,date:today()}});save();showQ();return}
     if(!s.students.length){alert('لا يوجد تلاميذ في هذه الشعبة');return}
