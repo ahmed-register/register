@@ -151,8 +151,9 @@ function pickArabic(B){
     const a=takeBranch(gr,2,used,st);
     out.push({n:out.length+1,rule:'both',br:a.ids.map(x=>({ids:[x],tid:a.tid}))});
   }
-  const kh=B.khat[Math.floor(Math.random()*B.khat.length)];
-  out.push({n:out.length+1,rule:'single',br:[{ids:[kh],tid:null}]});
+  const ks=B.topics.filter(t=>t.kind==='khat'),kon=ks.filter(on),kp=kon.length?kon:ks;
+  const kt=kp[Math.floor(Math.random()*kp.length)];
+  out.push({n:out.length+1,rule:'single',br:[{ids:[kt.n[0]],tid:kt.id}]});
   return out;
 }
 function pickExam(B){
@@ -163,7 +164,7 @@ function pickExam(B){
 }
 const nl=t=>esc(t).replace(/\n/g,'<br>');
 function examHtml(B,r){
-  const ans=n=>qg.ans&&B.q[n].a?`<div class="note" style="color:var(--ok)">← ${esc(B.q[n].a)}</div>`:'';
+  const ans=n=>qg.ans&&B.q[n].a?`<div class="note" style="color:var(--ok)">← ${nl(B.q[n].a)}</div>`:'';
   const box='<div class="item" style="flex-direction:column;align-items:stretch">';
   return r.exam.map(q=>{
     if(q.rule==='single'){const n=q.br[0].ids[0];return box+`<div><b>س${D5[q.n-1]} /</b> ${nl(clean(B.q[n].q))}${ans(n)}</div></div>`}
@@ -227,7 +228,7 @@ function buildPaper(B,s,r,c){
 }
 const chip=(B,t)=>`<button class="chip ${qg.topics.has(t.id)?'on':''}" data-qt="${t.id}">${esc(t.name)}${(B.card||B.arExam)?'':' ('+t.n.length+')'}</button>`;
 const chipsH=B=>B.arExam
-  ?'<div class="note" style="margin-top:4px"><b>التعبير</b> — اختر المواضيع (يُختار منها موضوعان والتلميذ يجيب عن واحد)</div><div class="row">'+B.topics.filter(t=>t.kind==='essay').map(t=>chip(B,t)).join('')+'</div><div class="note"><b>القواعد</b> — اختر المواضيع</div><div class="row">'+B.topics.filter(t=>t.kind==='gram').map(t=>chip(B,t)).join('')+'</div><div class="note">الخط: سؤال واحد يُختار تلقائياً</div>'
+  ?'<div class="note" style="margin-top:4px"><b>التعبير</b> — اختر موضوعين (إذا اخترت أكثر من موضوعين يُؤخذ منها موضوعان عشوائياً، والتلميذ يجيب عن واحد)</div><div class="row">'+B.topics.filter(t=>t.kind==='essay').map(t=>chip(B,t)).join('')+'</div><div class="note"><b>القواعد</b> — اختر المواضيع</div><div class="row">'+B.topics.filter(t=>t.kind==='gram').map(t=>chip(B,t)).join('')+'</div><div class="note"><b>الخط</b> — اختر عبارة واحدة (وإذا لم تختر شيئاً تُختار عبارة تلقائياً)</div><div class="row">'+B.topics.filter(t=>t.kind==='khat').map(t=>chip(B,t)).join('')+'</div>'
   :'<div class="row">'+B.topics.map(t=>chip(B,t)).join('')+'</div>';
 const aetH=B=>B.arExam?'<div class="row"><b>نوع الامتحان:</b>'+ETYPES.slice(0,2).map(t=>`<button class="chip ${(cfgOf().etype===ETYPES[1])===(t===ETYPES[1])?'on':''}" data-aet="${t}">${t}</button>`).join('')+'</div>':'';
 const exNote=B=>B.arExam?'امتحان اللغة العربية التحريري: التعبير (موضوعان والتلميذ يجيب عن واحد) + القواعد ('+(cfgOf().etype===ETYPES[1]?'خمسة':'ثلاثة')+' أسئلة، كل سؤال من فرعين) + الخط (سؤال واحد)':isM4(qg.key)?'الامتحان التحريري (من 10 درجات): خمسة أسئلة — س١ وس٣ وس٥ من فرعين يجيب عنهما التلميذ، وس٢ وس٤ من ثلاثة فروع يجيب التلميذ عن فرعين فقط':'الامتحان التحريري: خمسة أسئلة — س١ وس٢ وس٤ من فرعين، وس٣ وس٥ من ثلاثة فروع يجيب التلميذ عن فرعين فقط';
